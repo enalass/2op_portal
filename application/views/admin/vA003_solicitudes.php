@@ -236,6 +236,26 @@
                     template: function(row) {
                       return row.Name 
                     },
+                },
+                {
+                    field: 'State',
+                    title: 'Estado',
+                    type: 'text',
+                    autoHide: false,
+                    textAlign: 'left',
+                    template: function(row) {
+                      return row.State 
+                    },
+                },
+                {
+                    field: 'Origin',
+                    title: 'Origen',
+                    type: 'text',
+                    autoHide: false,
+                    textAlign: 'left',
+                    template: function(row) {
+                      return row.Origin 
+                    },
                 }, 
                 {
                     field: 'Actions',

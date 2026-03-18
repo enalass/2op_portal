@@ -48,6 +48,8 @@ class CA003_solicitudes extends CI_Controller {
 				$data[] = array(
 								"RecordID"			=>intval($element->{self::$CODE_DB})
 								,"Name"				=>$element->{self::$NAME_DB}
+								,"State"			=>$element->ESO_DS_NAME
+								,"Origin"			=>$element->FSO_DS_NAME
 							);
 			}
 		}

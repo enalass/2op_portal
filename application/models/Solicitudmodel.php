@@ -9,6 +9,8 @@ class Solicitudmodel extends CI_Model {
 	function getElementsList(){
 		$this->db->where( self::$PREFIX . "_BL_DELETE",0);
 		$this->db->from(self::$TABLE);
+		$this->db->join("m_fso_fuentesolicitud mfs","mfs.FSO_CO_ID = " . self::$TABLE . ".FSO_CO_ID","left");
+		$this->db->join("m_eso_estadosolicitud eso","eso.ESO_CO_ID = " . self::$TABLE . ".ESO_CO_ID","left");
 
 		$data = $this->db->get();
 		
@@ -23,6 +25,8 @@ class Solicitudmodel extends CI_Model {
 	function getElementById($id){
 		$this->db->where( self::$PREFIX . "_CO_ID",$id );
 		$this->db->from( self::$TABLE );
+		$this->db->join("m_fso_fuentesolicitud mfs","mfs.FSO_CO_ID = " . self::$TABLE . ".FSO_CO_ID","left");
+		$this->db->join("m_eso_estadosolicitud eso","eso.ESO_CO_ID = " . self::$TABLE . ".ESO_CO_ID","left");
 
 		$data = $this->db->get();
 		
