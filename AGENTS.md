@@ -35,6 +35,9 @@ Este proyecto utiliza la librería **DCMTK 3.7.0** como herramienta DICOM local.
 - NO proponer librerías alternativas (pydicom, dcm4che, etc.)
 - NO usar servicios externos o APIs cloud para DICOM
 - NO reemplazar DCMTK bajo ninguna circunstancia
+- asumir que DCMTK 3.7.0 está instalado en `/opt/dcmtk-3.7.0/bin`
+- priorizar siempre el uso de rutas absolutas en comandos PHP
+- no asumir que Apache hereda variables PATH del shell
 
 ---
 
