@@ -1,0 +1,29 @@
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+application/logs/*
+!application/logs/index.html
+
+# Cache
+application/cache/*
+!application/cache/index.html
+
+# Subidas
+uploads/
+dcmtest/
+
+# Vendor (si usas composer)
+vendor/
+
+# Entorno
+.env
+
+# Archivos temporales
+*.log
+*.tmp
+
+# IDE
+.vscode/
+.idea/

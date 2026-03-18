@@ -1,0 +1,282 @@
+/* --- COLORES --- */
+
+.header,.brand,.aside-menu {
+    background-color: #000;
+}
+
+.aside-menu .menu-nav > .menu-item.menu-item-active > .menu-heading, .aside-menu .menu-nav > .menu-item.menu-item-active > .menu-link {
+    background-color: #fff9a1;
+}
+
+.aside-menu .menu-nav > .menu-item .menu-submenu .menu-item.menu-item-active > .menu-heading, .aside-menu .menu-nav > .menu-item .menu-submenu .menu-item.menu-item-active > .menu-link {
+    background-color: #fff9a1;
+}
+
+.aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active):hover > .menu-heading, .aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active) > .menu-link {
+    background-color: #000;
+}
+
+.aside-menu .menu-nav > .menu-item.menu-item-open > .menu-heading, .aside-menu .menu-nav > .menu-item.menu-item-open > .menu-link {
+    background-color: #000;
+}
+
+.aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active):hover > .menu-heading, .aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active):hover > .menu-link {
+    background-color: #dfa700;
+    color: #000!important;
+}
+
+.aside-menu .menu-nav > .menu-item.menu-item-active > .menu-heading .menu-icon, .aside-menu .menu-nav > .menu-item.menu-item-active > .menu-link .menu-icon {
+    color: #fcef4b;
+}
+
+.aside-menu .menu-nav > .menu-section .menu-text {
+    color: #fcef4b;
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 2px;
+}
+
+.scrolltop {
+    background-color: #00709e;    
+}
+
+/* Imagen Login */
+
+.symbol.symbol-light-success .symbol-label {
+    background-color: #00709e;
+    color: #fff;
+}
+
+/* TEXTOS MENÚ */
+
+/* Normal */
+.aside-menu .menu-nav > .menu-item > .menu-heading .menu-text, .aside-menu .menu-nav > .menu-item > .menu-link .menu-text {
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.2;
+    letter-spacing: 1px;
+    font-weight: 100;
+}
+
+/* Activo */
+.aside-menu .menu-nav > .menu-item.menu-item-active > .menu-heading .menu-text, .aside-menu .menu-nav > .menu-item.menu-item-active > .menu-link .menu-text {
+    color: #000;
+    font-size: 16px;
+    line-height: 1.2;
+    font-weight: 800;
+}
+
+.aside-menu .menu-nav > .menu-item .menu-submenu .menu-item.menu-item-active > .menu-heading .menu-text, .aside-menu .menu-nav > .menu-item .menu-submenu .menu-item.menu-item-active > .menu-link .menu-text {
+    color: #000;
+}
+
+/* Submenú */
+.aside-menu .menu-nav > .menu-item .menu-submenu .menu-item > .menu-heading .menu-text, .aside-menu .menu-nav > .menu-item .menu-submenu .menu-item > .menu-link .menu-text {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+
+/* --- ICONOS MENÚ --- */
+
+/* Activo */
+.aside-menu .menu-nav > .menu-item.menu-item-active > .menu-heading .menu-icon.svg-icon svg g [fill], .aside-menu .menu-nav > .menu-item.menu-item-active > .menu-link .menu-icon.svg-icon svg g [fill] {
+    -webkit-transition: fill 0.3s ease;
+    transition: fill 0.3s ease;
+    fill: #000;
+}
+
+/* Desactivado */
+.aside-menu .menu-nav > .menu-item > .menu-heading .menu-icon.svg-icon svg g [fill], .aside-menu .menu-nav > .menu-item > .menu-link .menu-icon.svg-icon svg g [fill] {
+    -webkit-transition: fill 0.3s ease;
+    transition: fill 0.3s ease;
+    fill: #fff;
+}
+
+/* Hover */
+.aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active):hover > .menu-heading .menu-icon.svg-icon svg g [fill], .aside-menu .menu-nav > .menu-item:not(.menu-item-parent):not(.menu-item-open):not(.menu-item-here):not(.menu-item-active):hover > .menu-link .menu-icon.svg-icon svg g [fill] {
+	fill: #fff;
+}
+
+
+/* --- TARJETAS --- */
+
+.card.card-custom {
+    -webkit-box-shadow: 0px 0px 30px 0px rgb(82 63 105 / 5%);
+    box-shadow: 0px 0px 30px 0px rgb(0 112 158 / 10%);
+    border: 0;
+}
+
+/* Títulos tablas */
+.datatable.datatable-default.datatable-head-custom > .datatable-table > .datatable-head .datatable-row > .datatable-cell.datatable-cell-sorted > span, .datatable.datatable-default.datatable-head-custom > .datatable-table > .datatable-foot .datatable-row > .datatable-cell.datatable-cell-sorted > span {
+    color: #00709e;
+}
+
+.datatable.datatable-default > .datatable-table > .datatable-head .datatable-row > .datatable-cell > span > i {
+    color: #00709e;
+}
+
+.text-success {
+	color: #1abc9c !important;
+}
+
+.label.label-success {
+    color: #ffffff;
+	color: #1abc9c !important;
+}
+
+.datatable.datatable-default > .datatable-table > .datatable-head .datatable-row > .datatable-cell.datatable-cell-left, .datatable.datatable-default > .datatable-table > .datatable-body .datatable-row > .datatable-cell.datatable-cell-left, .datatable.datatable-default > .datatable-table > .datatable-foot .datatable-row > .datatable-cell.datatable-cell-left {
+    padding-left: 10px;
+}
+
+.cocienteResultado {
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.datatable.datatable-default.datatable-subtable > .datatable-table > .datatable-head .datatable-toggle-subtable > i, .datatable.datatable-default.datatable-subtable > .datatable-table > .datatable-body .datatable-toggle-subtable > i, .datatable.datatable-default.datatable-subtable > .datatable-table > .datatable-foot .datatable-toggle-subtable > i {
+    color: #00709e;
+}
+
+.card.card-custom > .card-header .card-title, .card.card-custom > .card-header .card-title .card-label {
+    font-weight: 300;
+    font-size: 25px;
+    line-height: 1.2;
+    color: #000;
+}
+
+.apexcharts-title-text {
+    font-weight: 300;
+    font-size: 22px;
+}
+
+.apexcharts-subtitle-text {
+    font-style: italic;
+    font-weight: 300;    
+}
+
+label {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.card.card-custom > .card-body {
+    padding: 1.5rem 2.25rem 2.25rem;
+}
+
+.apexcharts-menu-icon {
+    transform: scale(1.5) !important;
+}
+
+.apexcharts-menu-icon svg path {
+    fill: #00709e29 !important;
+}
+
+#chart_cliente {
+    float: left;
+    position: relative;
+    transition: 1s ease transform;
+    z-index: 3;
+    padding-bottom: 50px;
+}
+
+.datatable-pager-detail {
+    font-size: 12px;
+    margin-right: 45px;
+}
+
+.datatable.datatable-default.datatable-subtable > .datatable-table > .datatable-body .datatable-row-subtable > .datatable-subtable > .datatable {
+    -webkit-box-shadow: 0px 10px 15px 1px rgb(0 0 0 / 5%);
+    box-shadow: 0px 10px 15px 1px rgb(0 0 0 / 5%);
+    border: 2px solid #00709e !important;
+    padding: 10px 5px 0 !important;
+}
+
+.nav.nav-tabs.nav-tabs-line .nav-link:hover:not(.disabled), .nav.nav-tabs.nav-tabs-line .nav-link.active, .nav.nav-tabs.nav-tabs-line .show > .nav-link {
+    border-bottom: 1px solid #00709e;    
+}
+
+.nav .show > .nav-link .nav-icon i, .nav .nav-link:hover:not(.disabled) .nav-icon i, .nav .nav-link.active .nav-icon i {
+    color: #00709e;    
+}
+
+.nav .show > .nav-link .nav-text, .nav .nav-link:hover:not(.disabled) .nav-text, .nav .nav-link.active .nav-text {
+     color: #00709e;   
+}
+
+.datatable.datatable-default.datatable-loaded > .datatable-table > .datatable-head .datatable-row, .datatable.datatable-default.datatable-loaded > .datatable-table > .datatable-body .datatable-row, .datatable.datatable-default.datatable-loaded > .datatable-table > .datatable-foot .datatable-row {
+    display: table;
+    table-layout: fixed;
+}
+
+.datatable.datatable-default.datatable-subtable > .datatable-table > .datatable-body .datatable-row.datatable-row-subtable-expanded > .datatable-cell {
+    background-color: #fcef4b !important;
+}
+
+
+
+/* --- BOTONES --- */
+
+.btn.btn-primary {
+    color: #FFFFFF;
+    background-color: #00709e !important;
+    border-color: #00709e !important;
+}
+
+.btn.btn-primary:hover {
+    color: #FFFFFF;
+    background-color: #62b5e5 !important;
+    border-color: #62b5e5 !important;
+}
+
+.btn.btn-light-primary {
+    color: #62b5e5;
+    background-color: #fff;
+    border-color: #62b5e5;
+}
+
+.btn.btn-light-primary:hover {
+    color: #00709e !important;
+    background-color: #fff !important;
+    border-color: #00709e !important;
+}
+
+.btn.btn-success {
+    color: #ffffff;
+    background-color: #00709e;
+    border-color: #00709e;
+}
+
+.btn.btn-success:hover {
+    color: #FFFFFF;
+    background-color: #62b5e5!important;
+    border-color: #62b5e5!important;
+}
+
+.datatable.datatable-default > .datatable-pager > .datatable-pager-nav > li > .datatable-pager-link.datatable-pager-link-active {
+    background-color: #00709e;
+    color: #FFFFFF;
+}
+
+.datatable.datatable-default > .datatable-pager > .datatable-pager-nav > li > .datatable-pager-link.datatable-pager-link-active:hover {
+    background-color: #62b5e5;
+    color: #FFFFFF;
+}
+
+.switch.switch-outline.switch-success input:checked ~ span:after {
+    color: #ffffff;
+    background-color: #00709e;
+}
+
+.switch.switch-outline.switch-success input:checked ~ span:before {
+    border: 2px solid #00709e;
+    background-color: transparent;
+}
+
+.datatable.datatable-default > .datatable-pager > .datatable-pager-info .datatable-pager-size .btn.dropdown-toggle:focus, .datatable.datatable-default > .datatable-pager > .datatable-pager-info .datatable-pager-size .btn.dropdown-toggle:hover, .datatable.datatable-default > .datatable-pager > .datatable-pager-info .datatable-pager-size.show > .btn.dropdown-toggle {
+    background-color: #fcef4b !important;
+}
