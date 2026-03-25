@@ -82,9 +82,12 @@ class CA003_solicitudes extends CI_Controller {
 
 	public function addElement(){
 		$resp = array();
+		$_POST['ele_ped_importe'] = $this->normalizeImporteForValidation($this->input->post('ele_ped_importe', TRUE));
 
 		$this->form_validation->set_rules('ele_name', 'name', 'required|trim|min_length[3]|xss_clean');
 		$this->form_validation->set_rules('ele_fso_id', 'origen de la solicitud', 'required|integer');
+		$this->form_validation->set_rules('ele_ped_importe', 'importe', 'required|decimal');
+		$this->form_validation->set_rules('ele_ped_idioma', 'idioma preferido', 'required|trim|min_length[2]|max_length[5]|alpha_dash');
 		
 		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
 		$this->form_validation->set_message('min_length', 'El campo %s debe tener al menos %s caracteres');
@@ -113,6 +116,8 @@ class CA003_solicitudes extends CI_Controller {
 				self::$PREFIX . "_DS_ADQ_MAIL"			=>$this->input->post('ele_adq_mail', TRUE),
 				self::$PREFIX . "_DS_ADQ_TELEFONO"		=>$this->input->post('ele_adq_phone', TRUE),
 				self::$PREFIX . "_DS_ADQ_MOTIVO"		=>$this->input->post('ele_adq_reason', TRUE),
+				self::$PREFIX . "_NM_IMPORTE"			=>$this->input->post('ele_ped_importe', TRUE),
+				"IDI_CO_ISO"							=>$this->input->post('ele_ped_idioma', TRUE),
 				self::$PREFIX . "_DS_SOLICITANTE_TIPO"	=>$this->input->post('ele_solicitante_tipo', TRUE),
 				self::$PREFIX . "_DS_PAC_NOMBRE"		=>$this->input->post('ele_pac_nombre', TRUE),
 				self::$PREFIX . "_DS_PAC_APELLIDO1"		=>$this->input->post('ele_pac_apellido1', TRUE),
@@ -188,9 +193,12 @@ class CA003_solicitudes extends CI_Controller {
 			return;
 		}
 		$resp = array();
+		$_POST['ele_ped_importe'] = $this->normalizeImporteForValidation($this->input->post('ele_ped_importe', TRUE));
 
 		$this->form_validation->set_rules('ele_name', 'nombre', 'required|trim|min_length[3]|xss_clean');
 		$this->form_validation->set_rules('ele_fso_id', 'origen de la solicitud', 'required|integer');
+		$this->form_validation->set_rules('ele_ped_importe', 'importe', 'required|decimal');
+		$this->form_validation->set_rules('ele_ped_idioma', 'idioma preferido', 'required|trim|min_length[2]|max_length[5]|alpha_dash');
 
 		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
 		$this->form_validation->set_message('min_length', 'El campo %s debe tener al menos %s caracteres');
@@ -218,6 +226,8 @@ class CA003_solicitudes extends CI_Controller {
 				self::$PREFIX . "_DS_ADQ_MAIL"			=>$this->input->post('ele_adq_mail', TRUE),
 				self::$PREFIX . "_DS_ADQ_TELEFONO"		=>$this->input->post('ele_adq_phone', TRUE),
 				self::$PREFIX . "_DS_ADQ_MOTIVO"		=>$this->input->post('ele_adq_reason', TRUE),
+				self::$PREFIX . "_NM_IMPORTE"			=>$this->input->post('ele_ped_importe', TRUE),
+				"IDI_CO_ISO"							=>$this->input->post('ele_ped_idioma', TRUE),
 				self::$PREFIX . "_DS_NOTAS"			=>$this->input->post('ele_notas', TRUE),
 				self::$PREFIX . "_DS_SOLICITANTE_TIPO"	=>$this->input->post('ele_solicitante_tipo', TRUE),
 				self::$PREFIX . "_DS_PAC_NOMBRE"		=>$this->input->post('ele_pac_nombre', TRUE),
@@ -348,6 +358,14 @@ class CA003_solicitudes extends CI_Controller {
 			}
 		}
 
+		$idioma_options = array('' => 'Seleccionar idioma');
+		$idiomas = $this->{self::$MODEL}->getIdiomasActivos();
+		if($idiomas !== false){
+			foreach($idiomas->result() as $idioma){
+				$idioma_options[$idioma->IDI_CO_ISO] = $idioma->IDI_DS_NOMBRE;
+			}
+		}
+
 		$estado_nombre = $get_value('ESO_DS_NAME', 'Leed');
 
 		$field_map = array(
@@ -359,6 +377,8 @@ class CA003_solicitudes extends CI_Controller {
 			'@FIELD_ADQ_MAIL' => form_input(array('name'=>'ele_adq_mail', 'id'=>'ele_adq_mail','class'=>$input_class,'placeholder'=>'Mail', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MAIL'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_ADQ_PHONE' => form_input(array('name'=>'ele_adq_phone', 'id'=>'ele_adq_phone','class'=>$input_class,'placeholder'=>'Teléfono', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_TELEFONO'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_ADQ_REASON' => form_textarea(array('name'=>'ele_adq_reason', 'id'=>'ele_adq_reason','class'=>$input_class,'rows'=>3,'placeholder'=>'Motivo', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MOTIVO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PED_IMPORTE' => form_input(array('name'=>'ele_ped_importe', 'id'=>'ele_ped_importe','class'=>$input_class,'type'=>'text','inputmode'=>'decimal', 'placeholder'=>'0.00', 'value'=>$get_value(self::$PREFIX . '_NM_IMPORTE'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PED_IDIOMA' => form_dropdown('ele_ped_idioma', $idioma_options, $get_value('IDI_CO_ISO'), 'id="ele_ped_idioma" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_NOTAS' => form_textarea(array('name'=>'ele_notas', 'id'=>'ele_notas','class'=>$input_class,'rows'=>4,'placeholder'=>'Notas internas', 'value'=>$get_value(self::$PREFIX . '_DS_NOTAS'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_SOLICITANTE_TIPO' => form_dropdown('ele_solicitante_tipo', $solicitante_options, $get_value(self::$PREFIX . '_DS_SOLICITANTE_TIPO', 'PACIENTE'), 'id="ele_solicitante_tipo" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_PAC_NOMBRE' => form_input(array('name'=>'ele_pac_nombre', 'id'=>'ele_pac_nombre','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_NOMBRE'), 'disabled'=>$disabled ? 'disabled' : null)),
@@ -401,6 +421,39 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		return $field_map;
+	}
+
+	private function normalizeImporteForValidation($value){
+		if (is_null($value)) {
+			return '';
+		}
+
+		$value = trim((string)$value);
+		if ($value === '') {
+			return '';
+		}
+
+		$value = str_replace(' ', '', $value);
+		$value = str_replace(',', '.', $value);
+
+		if (!preg_match('/^\d+(\.\d+)?$/', $value)) {
+			return $value;
+		}
+
+		if (strpos($value, '.') === false) {
+			return $value . '.00';
+		}
+
+		list($intPart, $decPart) = explode('.', $value, 2);
+		if ($decPart === '') {
+			return $intPart . '.00';
+		}
+
+		if (strlen($decPart) === 1) {
+			return $intPart . '.' . $decPart . '0';
+		}
+
+		return $intPart . '.' . substr($decPart, 0, 2);
 	}
 
 }

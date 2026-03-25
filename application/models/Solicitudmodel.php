@@ -70,6 +70,21 @@ class Solicitudmodel extends CI_Model {
 		return false;
 	}
 
+	function getIdiomasActivos(){
+		$this->db->where('IDI_BL_ENABLE', 1);
+		$this->db->where('IDI_BL_DELETE', 0);
+		$this->db->from('m_idi_idiomas');
+		$this->db->order_by('IDI_DS_NOMBRE', 'ASC');
+
+		$data = $this->db->get();
+
+		if ($data->num_rows() > 0){
+			return $data;
+		}
+
+		return false;
+	}
+
 	function insertElement($data){
 		$this->db->insert( self::$TABLE ,$data);
 		return $this->db->insert_id();

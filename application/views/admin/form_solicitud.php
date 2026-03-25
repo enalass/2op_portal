@@ -43,6 +43,23 @@
 		</div>
 
 		<hr>
+		<h5 class="mb-4">Datos pedido</h5>
+		<div class="row">
+			<div class="col-md-6">
+				<div class="form-group">
+					<label for="ele_ped_importe" class="control-label">Importe</label>
+					@FIELD_PED_IMPORTE
+				</div>
+			</div>
+			<div class="col-md-6">
+				<div class="form-group">
+					<label for="ele_ped_idioma" class="control-label">Idioma preferido</label>
+					@FIELD_PED_IDIOMA
+				</div>
+			</div>
+		</div>
+
+		<hr>
 		<h5 class="mb-4">Formulario de contratación</h5>
 		<div class="form-group">
 			<label for="ele_solicitante_tipo" class="control-label">Paciente/Tutor</label>
@@ -256,6 +273,41 @@
 
 <script>
 (function() {
+	function normalizeImporte(rawValue) {
+		var value = (rawValue || '').toString().trim();
+		if (value === '') {
+			return '';
+		}
+
+		value = value.replace(/\s+/g, '').replace(',', '.');
+
+		if (!/^\d+(\.\d+)?$/.test(value)) {
+			return rawValue;
+		}
+
+		if (value.indexOf('.') === -1) {
+			return value + '.00';
+		}
+
+		var parts = value.split('.');
+		if (parts[1].length === 0) {
+			return parts[0] + '.00';
+		}
+		if (parts[1].length === 1) {
+			return parts[0] + '.' + parts[1] + '0';
+		}
+
+		return parts[0] + '.' + parts[1].substring(0, 2);
+	}
+
+	function applyNormalizeImporte() {
+		var $importe = jQuery('#ele_ped_importe');
+		if ($importe.length === 0) {
+			return;
+		}
+		$importe.val(normalizeImporte($importe.val()));
+	}
+
 	function toggleTutor() {
 		var tipo = jQuery('#ele_solicitante_tipo').val();
 		if (tipo === 'TUTOR') {
@@ -265,6 +317,8 @@
 		}
 	}
 
+	jQuery(document).on('blur', '#ele_ped_importe', applyNormalizeImporte);
+	jQuery(document).on('submit', '#formModalElement', applyNormalizeImporte);
 	jQuery(document).on('change', '#ele_solicitante_tipo', toggleTutor);
 	toggleTutor();
 })();
