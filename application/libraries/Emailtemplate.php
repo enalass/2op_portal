@@ -23,34 +23,15 @@ class Emailtemplate
     {
         $this->lastError = '';
 
-        if (empty($type) || empty($to)) {
-            $this->lastError = 'Tipo de email o destinatario vacio.';
+        if (empty($to)) {
+            $this->lastError = 'Destinatario vacio.';
             return FALSE;
         }
 
-        if (!isset($this->templateRegistry[$type])) {
-            $this->lastError = 'Tipo de email no registrado: ' . $type;
+        $rendered = $this->renderByType($type, $data);
+        if ($rendered === FALSE) {
             return FALSE;
         }
-
-        $template = $this->templateRegistry[$type];
-        if (empty($template['view']) || empty($template['subject'])) {
-            $this->lastError = 'Configuracion incompleta para el tipo: ' . $type;
-            return FALSE;
-        }
-
-        $payload = is_array($data) ? $data : array();
-        $payload['app_name'] = isset($payload['app_name']) ? $payload['app_name'] : '2OP Portal';
-        $payload['current_year'] = date('Y');
-
-        $subject = $this->replacePlaceholders($template['subject'], $payload);
-
-        $bodyContent = $this->CI->load->view('email_templates/' . $template['view'], $payload, TRUE);
-
-        $layoutData = $payload;
-        $layoutData['subject'] = $subject;
-        $layoutData['body_content'] = $bodyContent;
-        $html = $this->CI->load->view('email_templates/layout', $layoutData, TRUE);
 
         $fromEmail = isset($options['from_email']) ? $options['from_email'] : EMAIL_CONTACT;
         $fromName = isset($options['from_name']) ? $options['from_name'] : 'No Reply';
@@ -69,8 +50,8 @@ class Emailtemplate
             $this->CI->email->bcc($options['bcc']);
         }
 
-        $this->CI->email->subject($subject);
-        $this->CI->email->message($html);
+        $this->CI->email->subject($rendered['subject']);
+        $this->CI->email->message($rendered['html']);
 
         if (!$this->CI->email->send()) {
             $this->lastError = $this->CI->email->print_debugger();
@@ -78,6 +59,50 @@ class Emailtemplate
         }
 
         return TRUE;
+    }
+
+    public function renderByType($type, $data = array())
+    {
+        $this->lastError = '';
+
+        if (empty($type)) {
+            $this->lastError = 'Tipo de email vacio.';
+            return FALSE;
+        }
+
+        if (!isset($this->templateRegistry[$type])) {
+            $this->lastError = 'Tipo de email no registrado: ' . $type;
+            return FALSE;
+        }
+
+        $template = $this->templateRegistry[$type];
+        if (empty($template['view']) || empty($template['subject'])) {
+            $this->lastError = 'Configuracion incompleta para el tipo: ' . $type;
+            return FALSE;
+        }
+
+        $payload = is_array($data) ? $data : array();
+        $payload['app_name'] = isset($payload['app_name']) ? $payload['app_name'] : 'Segunda opinión radiológica';
+        $payload['current_year'] = date('Y');
+
+        $subject = $this->replacePlaceholders($template['subject'], $payload);
+        $bodyContent = $this->CI->load->view('email_templates/' . $template['view'], $payload, TRUE);
+
+        $layoutData = $payload;
+        $layoutData['subject'] = $subject;
+        $layoutData['body_content'] = $bodyContent;
+        $html = $this->CI->load->view('email_templates/layout', $layoutData, TRUE);
+
+        return array(
+            'subject' => $subject,
+            'html' => $html,
+            'payload' => $payload,
+        );
+    }
+
+    public function getTemplateTypes()
+    {
+        return array_keys($this->templateRegistry);
     }
 
     public function sendAltaUsuario($to, $data = array(), $options = array())

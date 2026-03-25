@@ -91,8 +91,8 @@ define('EXIT__AUTO_MAX', 125); // highest automatically-assigned error code
 |--------------------------------------------------------------------------
 */
 define('CIPHERPASS', 'yta127hI7M2451c3736y2yTdG7F3vO80');
-define('SERVER_CONTACT', 'ipiob.org');
-define('USER_CONTACT', 'no-reply@ipiob.org');
-define('EMAIL_CONTACT', 'no-reply@ipiob.org');
-define('EMAIL_REPLY', 'piob@ipiob.org');
-define('PASS_CONTACT', '1234567890*');
+define('SERVER_CONTACT', 'smtp.gmail.com');
+define('USER_CONTACT', 'luisalbertonr@gmail.com');
+define('EMAIL_CONTACT', 'luisalbertonr@gmail.com');
+define('EMAIL_REPLY', 'luisalbertonr@gmail.com');
+define('PASS_CONTACT', 'ortq kgie tkqd tdmu');
