@@ -40,6 +40,36 @@ class Solicitudmodel extends CI_Model {
 		}
 	}
 
+	function getEstadosSolicitudActivos(){
+		$this->db->where('ESO_BL_ENABLE', 1);
+		$this->db->where('ESO_BL_DELETE', 0);
+		$this->db->from('m_eso_estadosolicitud');
+		$this->db->order_by('ESO_DS_NAME', 'ASC');
+
+		$data = $this->db->get();
+
+		if ($data->num_rows() > 0){
+			return $data;
+		}
+
+		return false;
+	}
+
+	function getFuentesSolicitudActivas(){
+		$this->db->where('FSO_BL_ENABLE', 1);
+		$this->db->where('FSO_BL_DELETE', 0);
+		$this->db->from('m_fso_fuentesolicitud');
+		$this->db->order_by('FSO_DS_NAME', 'ASC');
+
+		$data = $this->db->get();
+
+		if ($data->num_rows() > 0){
+			return $data;
+		}
+
+		return false;
+	}
+
 	function insertElement($data){
 		$this->db->insert( self::$TABLE ,$data);
 		return $this->db->insert_id();

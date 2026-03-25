@@ -69,21 +69,8 @@ class CA003_solicitudes extends CI_Controller {
 
 		//Cargamos la plantilla del formulario
 		$contenido = fread($fichero,filesize($nombreFichero));
-
-		//Añadimos los input
-		$campos_formulario = array(
-			"@FIELD_ID"
-			,"@FIELD_ACTION"
-			,"@FIELD_NAME"
-			
-		);
-
-		$valores_campos_formulario = array(
-			form_hidden('ele_id', '0')
-			,form_hidden('action', 'add')
-			,form_input(array("name"=>"ele_name", "id"=>"ele_name","class"=>"form-control","placeholder"=>"Nombre", "value"=>""))
-		);
-		$contenido = str_replace($campos_formulario, $valores_campos_formulario, $contenido);
+		$field_map = $this->buildSolicitudFormFields();
+		$contenido = str_replace(array_keys($field_map), array_values($field_map), $contenido);
 		$contenido .= '';
 		//Creamos el Formulario
 		$formulario = form_open(base_url()."index.php/admin/" . self::$NAME . "/addElement",array("id"=>"formModalElement"));
@@ -97,6 +84,7 @@ class CA003_solicitudes extends CI_Controller {
 		$resp = array();
 
 		$this->form_validation->set_rules('ele_name', 'name', 'required|trim|min_length[3]|xss_clean');
+		$this->form_validation->set_rules('ele_fso_id', 'origen de la solicitud', 'required|integer');
 		
 		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
 		$this->form_validation->set_message('min_length', 'El campo %s debe tener al menos %s caracteres');
@@ -119,7 +107,42 @@ class CA003_solicitudes extends CI_Controller {
 			$activeElement = is_null( $this->input->post('ele_active') ) ? 0 : 1;
 			
 			$data = array(
-				self::$PREFIX . "_DS_NOMBRE"		=>$this->input->post('ele_name')
+				self::$PREFIX . "_DS_NOMBRE"			=>$this->input->post('ele_name', TRUE),
+				"ESO_CO_ID"								=>1,
+				"FSO_CO_ID"								=>$this->input->post('ele_fso_id', TRUE),
+				self::$PREFIX . "_DS_ADQ_MAIL"			=>$this->input->post('ele_adq_mail', TRUE),
+				self::$PREFIX . "_DS_ADQ_TELEFONO"		=>$this->input->post('ele_adq_phone', TRUE),
+				self::$PREFIX . "_DS_ADQ_MOTIVO"		=>$this->input->post('ele_adq_reason', TRUE),
+				self::$PREFIX . "_DS_SOLICITANTE_TIPO"	=>$this->input->post('ele_solicitante_tipo', TRUE),
+				self::$PREFIX . "_DS_PAC_NOMBRE"		=>$this->input->post('ele_pac_nombre', TRUE),
+				self::$PREFIX . "_DS_PAC_APELLIDO1"		=>$this->input->post('ele_pac_apellido1', TRUE),
+				self::$PREFIX . "_DS_PAC_APELLIDO2"		=>$this->input->post('ele_pac_apellido2', TRUE),
+				self::$PREFIX . "_DT_PAC_FECHA_NACIMIENTO"=>$this->input->post('ele_pac_fecha_nacimiento', TRUE),
+				self::$PREFIX . "_DS_PAC_SEXO"			=>$this->input->post('ele_pac_sexo', TRUE),
+				self::$PREFIX . "_DS_PAC_TIPO_DOCUMENTO"	=>$this->input->post('ele_pac_tipo_documento', TRUE),
+				self::$PREFIX . "_DS_PAC_DOCUMENTO"		=>$this->input->post('ele_pac_documento', TRUE),
+				self::$PREFIX . "_DS_PAC_PAIS"			=>$this->input->post('ele_pac_pais', TRUE),
+				self::$PREFIX . "_DS_PAC_PROVINCIA"		=>$this->input->post('ele_pac_provincia', TRUE),
+				self::$PREFIX . "_DS_PAC_POBLACION"		=>$this->input->post('ele_pac_poblacion', TRUE),
+				self::$PREFIX . "_DS_PAC_DOMICILIO"		=>$this->input->post('ele_pac_domicilio', TRUE),
+				self::$PREFIX . "_DS_PAC_COD_POSTAL"	=>$this->input->post('ele_pac_cp', TRUE),
+				self::$PREFIX . "_DS_PAC_EMAIL"			=>$this->input->post('ele_pac_email', TRUE),
+				self::$PREFIX . "_DS_PAC_TELEFONO"		=>$this->input->post('ele_pac_telefono', TRUE),
+				self::$PREFIX . "_DS_TUT_NOMBRE"		=>$this->input->post('ele_tut_nombre', TRUE),
+				self::$PREFIX . "_DS_TUT_APELLIDO1"		=>$this->input->post('ele_tut_apellido1', TRUE),
+				self::$PREFIX . "_DS_TUT_APELLIDO2"		=>$this->input->post('ele_tut_apellido2', TRUE),
+				self::$PREFIX . "_DT_TUT_FECHA_NACIMIENTO"=>$this->input->post('ele_tut_fecha_nacimiento', TRUE),
+				self::$PREFIX . "_DS_TUT_SEXO"			=>$this->input->post('ele_tut_sexo', TRUE),
+				self::$PREFIX . "_DS_TUT_TIPO_DOCUMENTO"	=>$this->input->post('ele_tut_tipo_documento', TRUE),
+				self::$PREFIX . "_DS_TUT_DOCUMENTO"		=>$this->input->post('ele_tut_documento', TRUE),
+				self::$PREFIX . "_DS_TUT_PAIS"			=>$this->input->post('ele_tut_pais', TRUE),
+				self::$PREFIX . "_DS_TUT_PROVINCIA"		=>$this->input->post('ele_tut_provincia', TRUE),
+				self::$PREFIX . "_DS_TUT_POBLACION"		=>$this->input->post('ele_tut_poblacion', TRUE),
+				self::$PREFIX . "_DS_TUT_DOMICILIO"		=>$this->input->post('ele_tut_domicilio', TRUE),
+				self::$PREFIX . "_DS_TUT_COD_POSTAL"	=>$this->input->post('ele_tut_cp', TRUE),
+				self::$PREFIX . "_DS_TUT_EMAIL"			=>$this->input->post('ele_tut_email', TRUE),
+				self::$PREFIX . "_DS_TUT_TELEFONO"		=>$this->input->post('ele_tut_telefono', TRUE),
+				self::$PREFIX . "_DS_NOTAS"				=>$this->input->post('ele_notas', TRUE),
 			);
 			//verificamos que cuando guarden estén logueados
 			if($this->session->userdata('logged')==TRUE && ($this->session->userdata('acceso'))>=100){
@@ -144,21 +167,8 @@ class CA003_solicitudes extends CI_Controller {
 
 		//Cargamos la plantilla del formulario
 		$contenido = fread($fichero,filesize($nombreFichero));
-
-		//Añadimos los input
-		$campos_formulario = array(
-			"@FIELD_ID"
-			,"@FIELD_ACTION"
-			,"@FIELD_NAME"
-			
-		);
-		
-		$valores_campos_formulario = array(
-			form_hidden('ele_id', $cat->{self::$CODE_DB})
-			,form_hidden('action', 'edit')
-			,form_input(array("name"=>"ele_name", "id"=>"ele_name","class"=>"form-control","placeholder"=>"Nombre", "value"=>$cat->{self::$NAME_DB}))
-		);
-		$contenido = str_replace($campos_formulario, $valores_campos_formulario, $contenido);
+		$field_map = $this->buildSolicitudFormFields($cat, false, 'edit');
+		$contenido = str_replace(array_keys($field_map), array_values($field_map), $contenido);
 		$contenido .= '<script>
 						jQuery(".selectDepartamento").select2({
 		         			placeholder: "Seleccionar departamento"
@@ -180,6 +190,7 @@ class CA003_solicitudes extends CI_Controller {
 		$resp = array();
 
 		$this->form_validation->set_rules('ele_name', 'nombre', 'required|trim|min_length[3]|xss_clean');
+		$this->form_validation->set_rules('ele_fso_id', 'origen de la solicitud', 'required|integer');
 
 		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
 		$this->form_validation->set_message('min_length', 'El campo %s debe tener al menos %s caracteres');
@@ -202,7 +213,41 @@ class CA003_solicitudes extends CI_Controller {
 			$activeElement = is_null( $this->input->post('ele_active') ) ? 0 : 1;
 			
 			$data = array(
-				self::$PREFIX . "_DS_NOMBRE"		=>$this->input->post('ele_name')
+				self::$PREFIX . "_DS_NOMBRE"			=>$this->input->post('ele_name', TRUE),
+				"FSO_CO_ID"								=>$this->input->post('ele_fso_id', TRUE),
+				self::$PREFIX . "_DS_ADQ_MAIL"			=>$this->input->post('ele_adq_mail', TRUE),
+				self::$PREFIX . "_DS_ADQ_TELEFONO"		=>$this->input->post('ele_adq_phone', TRUE),
+				self::$PREFIX . "_DS_ADQ_MOTIVO"		=>$this->input->post('ele_adq_reason', TRUE),
+				self::$PREFIX . "_DS_NOTAS"			=>$this->input->post('ele_notas', TRUE),
+				self::$PREFIX . "_DS_SOLICITANTE_TIPO"	=>$this->input->post('ele_solicitante_tipo', TRUE),
+				self::$PREFIX . "_DS_PAC_NOMBRE"		=>$this->input->post('ele_pac_nombre', TRUE),
+				self::$PREFIX . "_DS_PAC_APELLIDO1"		=>$this->input->post('ele_pac_apellido1', TRUE),
+				self::$PREFIX . "_DS_PAC_APELLIDO2"		=>$this->input->post('ele_pac_apellido2', TRUE),
+				self::$PREFIX . "_DT_PAC_FECHA_NACIMIENTO"=>$this->input->post('ele_pac_fecha_nacimiento', TRUE),
+				self::$PREFIX . "_DS_PAC_SEXO"			=>$this->input->post('ele_pac_sexo', TRUE),
+				self::$PREFIX . "_DS_PAC_TIPO_DOCUMENTO"	=>$this->input->post('ele_pac_tipo_documento', TRUE),
+				self::$PREFIX . "_DS_PAC_DOCUMENTO"		=>$this->input->post('ele_pac_documento', TRUE),
+				self::$PREFIX . "_DS_PAC_PAIS"			=>$this->input->post('ele_pac_pais', TRUE),
+				self::$PREFIX . "_DS_PAC_PROVINCIA"		=>$this->input->post('ele_pac_provincia', TRUE),
+				self::$PREFIX . "_DS_PAC_POBLACION"		=>$this->input->post('ele_pac_poblacion', TRUE),
+				self::$PREFIX . "_DS_PAC_DOMICILIO"		=>$this->input->post('ele_pac_domicilio', TRUE),
+				self::$PREFIX . "_DS_PAC_COD_POSTAL"	=>$this->input->post('ele_pac_cp', TRUE),
+				self::$PREFIX . "_DS_PAC_EMAIL"			=>$this->input->post('ele_pac_email', TRUE),
+				self::$PREFIX . "_DS_PAC_TELEFONO"		=>$this->input->post('ele_pac_telefono', TRUE),
+				self::$PREFIX . "_DS_TUT_NOMBRE"		=>$this->input->post('ele_tut_nombre', TRUE),
+				self::$PREFIX . "_DS_TUT_APELLIDO1"		=>$this->input->post('ele_tut_apellido1', TRUE),
+				self::$PREFIX . "_DS_TUT_APELLIDO2"		=>$this->input->post('ele_tut_apellido2', TRUE),
+				self::$PREFIX . "_DT_TUT_FECHA_NACIMIENTO"=>$this->input->post('ele_tut_fecha_nacimiento', TRUE),
+				self::$PREFIX . "_DS_TUT_SEXO"			=>$this->input->post('ele_tut_sexo', TRUE),
+				self::$PREFIX . "_DS_TUT_TIPO_DOCUMENTO"	=>$this->input->post('ele_tut_tipo_documento', TRUE),
+				self::$PREFIX . "_DS_TUT_DOCUMENTO"		=>$this->input->post('ele_tut_documento', TRUE),
+				self::$PREFIX . "_DS_TUT_PAIS"			=>$this->input->post('ele_tut_pais', TRUE),
+				self::$PREFIX . "_DS_TUT_PROVINCIA"		=>$this->input->post('ele_tut_provincia', TRUE),
+				self::$PREFIX . "_DS_TUT_POBLACION"		=>$this->input->post('ele_tut_poblacion', TRUE),
+				self::$PREFIX . "_DS_TUT_DOMICILIO"		=>$this->input->post('ele_tut_domicilio', TRUE),
+				self::$PREFIX . "_DS_TUT_COD_POSTAL"	=>$this->input->post('ele_tut_cp', TRUE),
+				self::$PREFIX . "_DS_TUT_EMAIL"			=>$this->input->post('ele_tut_email', TRUE),
+				self::$PREFIX . "_DS_TUT_TELEFONO"		=>$this->input->post('ele_tut_telefono', TRUE)
 			);
 			//verificamos que cuando guarden estén logueados
 			if($this->session->userdata('logged')==TRUE && ($this->session->userdata('acceso'))>=100){
@@ -227,20 +272,8 @@ class CA003_solicitudes extends CI_Controller {
 
 		//Cargamos la plantilla del formulario
 		$contenido = fread($fichero,filesize($nombreFichero));
-
-		//Añadimos los input
-		$campos_formulario = array(
-			"@FIELD_ID"
-			,"@FIELD_ACTION"
-			,"@FIELD_NAME"
-		);
-		$optionsCheck = array("name"=>"ele_active", "id"=>"ele_active", "value"=>1,"disabled"=>"disabled");
-		$valores_campos_formulario = array(
-			form_hidden('ele_id', $cat->{self::$CODE_DB})
-			,form_hidden('action', 'delete')
-			,form_input(array("name"=>"ele_name", "id"=>"ele_name","class"=>"form-control","placeholder"=>"Nombre", "value"=>$cat->{self::$NAME_DB},"disabled"=>"disabled"))
-		);
-		$contenido = str_replace($campos_formulario, $valores_campos_formulario, $contenido);
+		$field_map = $this->buildSolicitudFormFields($cat, true, 'delete');
+		$contenido = str_replace(array_keys($field_map), array_values($field_map), $contenido);
 		$contenido .= '<script>
 					 </script>';
 		//Creamos el Formulario
@@ -273,6 +306,101 @@ class CA003_solicitudes extends CI_Controller {
 		
 
 		echo json_encode($resp);
+	}
+
+	private function buildSolicitudFormFields($cat = null, $disabled = false, $action = 'add'){
+		$disabled = false;
+
+		$get_value = function($field, $default = '') use ($cat){
+			if (is_object($cat) && isset($cat->{$field}) && !is_null($cat->{$field})) {
+				return $cat->{$field};
+			}
+			return $default;
+		};
+
+		$input_class = 'form-control';
+		$disabled_attr = $disabled ? ' disabled="disabled"' : '';
+
+		$sexo_options = array(
+			'' => 'Seleccionar',
+			'M' => 'Masculino',
+			'F' => 'Femenino',
+			'O' => 'Otro'
+		);
+
+		$tipo_documento_options = array(
+			'' => 'Seleccionar',
+			'DNI' => 'DNI',
+			'NIE' => 'NIE',
+			'PASAPORTE' => 'Pasaporte'
+		);
+
+		$solicitante_options = array(
+			'PACIENTE' => 'Paciente',
+			'TUTOR' => 'Tutor'
+		);
+
+		$fso_options = array('' => 'Seleccionar origen');
+		$fuentes = $this->{self::$MODEL}->getFuentesSolicitudActivas();
+		if($fuentes !== false){
+			foreach($fuentes->result() as $fuente){
+				$fso_options[$fuente->FSO_CO_ID] = $fuente->FSO_DS_NAME;
+			}
+		}
+
+		$estado_nombre = $get_value('ESO_DS_NAME', 'Leed');
+
+		$field_map = array(
+			'@FIELD_ID' => form_hidden('ele_id', $get_value(self::$CODE_DB, '0')),
+			'@FIELD_ACTION' => form_hidden('action', $action),
+			'@FIELD_NAME' => form_input(array('name'=>'ele_name', 'id'=>'ele_name','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$NAME_DB), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_LEED_FORM' => form_input(array('name'=>'ele_leed_form_view', 'id'=>'ele_leed_form','class'=>$input_class, 'value'=>$estado_nombre, 'disabled'=>'disabled')),
+			'@FIELD_ORIGEN_SOLICITUD' => form_dropdown('ele_fso_id', $fso_options, $get_value('FSO_CO_ID'), 'id="ele_fso_id" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_ADQ_MAIL' => form_input(array('name'=>'ele_adq_mail', 'id'=>'ele_adq_mail','class'=>$input_class,'placeholder'=>'Mail', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MAIL'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_ADQ_PHONE' => form_input(array('name'=>'ele_adq_phone', 'id'=>'ele_adq_phone','class'=>$input_class,'placeholder'=>'Teléfono', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_TELEFONO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_ADQ_REASON' => form_textarea(array('name'=>'ele_adq_reason', 'id'=>'ele_adq_reason','class'=>$input_class,'rows'=>3,'placeholder'=>'Motivo', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MOTIVO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_NOTAS' => form_textarea(array('name'=>'ele_notas', 'id'=>'ele_notas','class'=>$input_class,'rows'=>4,'placeholder'=>'Notas internas', 'value'=>$get_value(self::$PREFIX . '_DS_NOTAS'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_SOLICITANTE_TIPO' => form_dropdown('ele_solicitante_tipo', $solicitante_options, $get_value(self::$PREFIX . '_DS_SOLICITANTE_TIPO', 'PACIENTE'), 'id="ele_solicitante_tipo" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_PAC_NOMBRE' => form_input(array('name'=>'ele_pac_nombre', 'id'=>'ele_pac_nombre','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_NOMBRE'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_APELLIDO1' => form_input(array('name'=>'ele_pac_apellido1', 'id'=>'ele_pac_apellido1','class'=>$input_class,'placeholder'=>'Primer apellido', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_APELLIDO1'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_APELLIDO2' => form_input(array('name'=>'ele_pac_apellido2', 'id'=>'ele_pac_apellido2','class'=>$input_class,'placeholder'=>'Segundo apellido', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_APELLIDO2'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_FECHA_NACIMIENTO' => form_input(array('name'=>'ele_pac_fecha_nacimiento', 'id'=>'ele_pac_fecha_nacimiento','class'=>$input_class,'type'=>'date', 'value'=>$get_value(self::$PREFIX . '_DT_PAC_FECHA_NACIMIENTO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_SEXO' => form_dropdown('ele_pac_sexo', $sexo_options, $get_value(self::$PREFIX . '_DS_PAC_SEXO'), 'id="ele_pac_sexo" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_PAC_TIPO_DOCUMENTO' => form_dropdown('ele_pac_tipo_documento', $tipo_documento_options, $get_value(self::$PREFIX . '_DS_PAC_TIPO_DOCUMENTO'), 'id="ele_pac_tipo_documento" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_PAC_DOCUMENTO' => form_input(array('name'=>'ele_pac_documento', 'id'=>'ele_pac_documento','class'=>$input_class,'placeholder'=>'Documento', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_DOCUMENTO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_PAIS' => form_input(array('name'=>'ele_pac_pais', 'id'=>'ele_pac_pais','class'=>$input_class,'placeholder'=>'Pais', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_PAIS'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_PROVINCIA' => form_input(array('name'=>'ele_pac_provincia', 'id'=>'ele_pac_provincia','class'=>$input_class,'placeholder'=>'Provincia', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_PROVINCIA'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_POBLACION' => form_input(array('name'=>'ele_pac_poblacion', 'id'=>'ele_pac_poblacion','class'=>$input_class,'placeholder'=>'Población', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_POBLACION'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_DOMICILIO' => form_input(array('name'=>'ele_pac_domicilio', 'id'=>'ele_pac_domicilio','class'=>$input_class,'placeholder'=>'Domicilio', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_DOMICILIO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_CP' => form_input(array('name'=>'ele_pac_cp', 'id'=>'ele_pac_cp','class'=>$input_class,'placeholder'=>'Cod. postal', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_COD_POSTAL'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_EMAIL' => form_input(array('name'=>'ele_pac_email', 'id'=>'ele_pac_email','class'=>$input_class,'placeholder'=>'Correo', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_EMAIL'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_PAC_TELEFONO' => form_input(array('name'=>'ele_pac_telefono', 'id'=>'ele_pac_telefono','class'=>$input_class,'placeholder'=>'Teléfono', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_TELEFONO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_NOMBRE' => form_input(array('name'=>'ele_tut_nombre', 'id'=>'ele_tut_nombre','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_NOMBRE'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_APELLIDO1' => form_input(array('name'=>'ele_tut_apellido1', 'id'=>'ele_tut_apellido1','class'=>$input_class,'placeholder'=>'Primer apellido', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_APELLIDO1'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_APELLIDO2' => form_input(array('name'=>'ele_tut_apellido2', 'id'=>'ele_tut_apellido2','class'=>$input_class,'placeholder'=>'Segundo apellido', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_APELLIDO2'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_FECHA_NACIMIENTO' => form_input(array('name'=>'ele_tut_fecha_nacimiento', 'id'=>'ele_tut_fecha_nacimiento','class'=>$input_class,'type'=>'date', 'value'=>$get_value(self::$PREFIX . '_DT_TUT_FECHA_NACIMIENTO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_SEXO' => form_dropdown('ele_tut_sexo', $sexo_options, $get_value(self::$PREFIX . '_DS_TUT_SEXO'), 'id="ele_tut_sexo" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_TUT_TIPO_DOCUMENTO' => form_dropdown('ele_tut_tipo_documento', $tipo_documento_options, $get_value(self::$PREFIX . '_DS_TUT_TIPO_DOCUMENTO'), 'id="ele_tut_tipo_documento" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_TUT_DOCUMENTO' => form_input(array('name'=>'ele_tut_documento', 'id'=>'ele_tut_documento','class'=>$input_class,'placeholder'=>'Documento', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_DOCUMENTO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_PAIS' => form_input(array('name'=>'ele_tut_pais', 'id'=>'ele_tut_pais','class'=>$input_class,'placeholder'=>'Pais', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_PAIS'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_PROVINCIA' => form_input(array('name'=>'ele_tut_provincia', 'id'=>'ele_tut_provincia','class'=>$input_class,'placeholder'=>'Provincia', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_PROVINCIA'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_POBLACION' => form_input(array('name'=>'ele_tut_poblacion', 'id'=>'ele_tut_poblacion','class'=>$input_class,'placeholder'=>'Población', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_POBLACION'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_DOMICILIO' => form_input(array('name'=>'ele_tut_domicilio', 'id'=>'ele_tut_domicilio','class'=>$input_class,'placeholder'=>'Domicilio', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_DOMICILIO'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_CP' => form_input(array('name'=>'ele_tut_cp', 'id'=>'ele_tut_cp','class'=>$input_class,'placeholder'=>'Cod. postal', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_COD_POSTAL'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_EMAIL' => form_input(array('name'=>'ele_tut_email', 'id'=>'ele_tut_email','class'=>$input_class,'placeholder'=>'Correo', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_EMAIL'), 'disabled'=>$disabled ? 'disabled' : null)),
+			'@FIELD_TUT_TELEFONO' => form_input(array('name'=>'ele_tut_telefono', 'id'=>'ele_tut_telefono','class'=>$input_class,'placeholder'=>'Teléfono', 'value'=>$get_value(self::$PREFIX . '_DS_TUT_TELEFONO'), 'disabled'=>$disabled ? 'disabled' : null))
+		);
+
+		if($action !== 'delete'){
+			foreach($field_map as $field_key => $field_html){
+				if($field_key === '@FIELD_LEED_FORM'){
+					continue;
+				}
+				$field_map[$field_key] = str_replace(array(' disabled="disabled"', ' disabled=""'), '', $field_html);
+			}
+		}
+
+		return $field_map;
 	}
 
 }
