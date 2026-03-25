@@ -1,0 +1,16 @@
+[19-Jun-2024 08:41:41 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "EMAIL_HTML" in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php:48
+Stack trace:
+#0 {main}
+  thrown in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php on line 48
+[19-Jun-2024 08:41:43 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "EMAIL_HTML" in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php:48
+Stack trace:
+#0 {main}
+  thrown in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php on line 48
+[19-Jun-2024 09:08:36 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "EMAIL_HTML" in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php:48
+Stack trace:
+#0 {main}
+  thrown in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php on line 48
+[19-Jun-2024 09:08:36 UTC] PHP Fatal error:  Uncaught Error: Undefined constant "EMAIL_HTML" in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php:48
+Stack trace:
+#0 {main}
+  thrown in /home/customer/www/wpo.easymodemarketing.com/public_html/2OPB/assets/php/form-processor.php on line 48

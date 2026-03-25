@@ -49,14 +49,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 | Examples:	my-controller/index	-> my_controller/index
 |		my-controller/my-method	-> my_controller/my_method
 */
-$route['default_controller'] = 'cerbero';
+$route['default_controller'] = 'publicController';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
 $route['administradores'] 	= 'cerbero';
 
 //URL Candidatos
-$route['dashboard'] 				= 'cuidador/cC001_dashboard';
-$route['panel']		 				= 'familiar/cF001_dashboard';
+$route['dashboard'] 				= 'admin/cA001_panelControl';
+$route['panel']		 				= 'cliente/cC001_panelControl';
 
 
