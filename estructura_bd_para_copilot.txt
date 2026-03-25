@@ -1,0 +1,617 @@
+GUÍA DE ESTRUCTURA DE BASE DE DATOS PARA MODIFICAR FORMULARIOS Y MODELOS
+
+Objetivo
+Este proyecto no usa relaciones declaradas mediante FOREIGN KEY en la base de datos. Las relaciones entre tablas se deducen por convención de nombres y se resuelven en el código.
+
+El objetivo de esta guía es que cualquier agente (por ejemplo Copilot) pueda interpretar correctamente la estructura de tablas, detectar claves primarias y foráneas, y aplicar cambios coherentes en formularios, modelos, consultas y lógica asociada.
+
+----------------------------------------
+1. CONVENCIÓN GENERAL DE NOMBRES
+----------------------------------------
+
+Cada tabla tiene un prefijo de 3 letras que identifica su entidad.
+Ese prefijo aparece también al inicio del nombre de sus columnas.
+
+Ejemplo:
+- Tabla: t_sol_solicitudes
+- Prefijo de la tabla: SOL
+
+Columnas de ejemplo de esa tabla:
+- SOL_CO_ID
+- ESO_CO_ID
+- FSO_CO_ID
+- SOL_DS_NOMBRE
+- SOL_DT_CREATE
+- SOL_BL_ENABLE
+- SOL_BL_DELETE
+
+Regla principal:
+- Si una columna termina en _CO_ID y el prefijo de esa columna coincide con el prefijo de la tabla, entonces normalmente es la clave primaria de esa tabla.
+- Si una columna termina en _CO_ID y su prefijo NO coincide con el prefijo de la tabla, entonces debe interpretarse como una clave foránea lógica hacia otra tabla.
+
+----------------------------------------
+2. TIPOS DE TABLAS SEGÚN EL PREFIJO DEL NOMBRE
+----------------------------------------
+
+Convención habitual:
+- m_*** : tablas maestras, catálogos o auxiliares
+- t_*** : tablas transaccionales o principales
+
+Ejemplos:
+- m_eso_estadosolicitud
+- t_sol_solicitudes
+
+Esto ayuda a interpretar el rol de cada tabla, aunque la lógica principal de relación depende del prefijo de campos, no del prefijo m_ o t_.
+
+----------------------------------------
+3. REGLA PARA IDENTIFICAR LA CLAVE PRIMARIA
+----------------------------------------
+
+La clave primaria de una tabla suele ser el campo:
+[PREFIJO_TABLA]_CO_ID
+
+Ejemplo:
+- Tabla: t_sol_solicitudes
+- Prefijo tabla: SOL
+- Clave primaria: SOL_CO_ID
+
+Otro ejemplo:
+- Tabla: m_eso_estadosolicitud
+- Prefijo tabla: ESO
+- Clave primaria esperada: ESO_CO_ID
+
+----------------------------------------
+4. REGLA PARA IDENTIFICAR CLAVES FORÁNEAS LÓGICAS
+----------------------------------------
+
+En una tabla, cualquier campo con formato:
+XXX_CO_ID
+que NO empiece por el prefijo de esa tabla, debe tratarse como clave foránea lógica.
+
+Ejemplo:
+Tabla: t_sol_solicitudes
+Prefijo tabla: SOL
+
+Campos:
+- SOL_CO_ID      -> clave primaria
+- ESO_CO_ID      -> clave foránea lógica hacia la tabla con prefijo ESO
+- FSO_CO_ID      -> clave foránea lógica hacia la tabla con prefijo FSO
+
+Importante:
+Estas relaciones pueden no existir físicamente como FOREIGN KEY en MySQL.
+Aun así, deben respetarse al modificar:
+- modelos
+- formularios
+- validaciones
+- consultas SQL
+- joins
+- listas desplegables
+- lógica de guardado/edición
+
+----------------------------------------
+5. CÓMO DEDUCIR LA TABLA DE DESTINO DE UNA CLAVE FORÁNEA
+----------------------------------------
+
+Para una columna XXX_CO_ID:
+- XXX es el prefijo de la tabla relacionada
+- la tabla destino será la que tenga como clave primaria XXX_CO_ID
+
+Ejemplo:
+- ESO_CO_ID debe apuntar a una tabla cuyo prefijo sea ESO
+- normalmente esa tabla será algo como: m_eso_estadosolicitud
+- y su clave primaria será: ESO_CO_ID
+
+Otro ejemplo:
+- FSO_CO_ID debe apuntar a una tabla cuyo prefijo sea FSO
+- la tabla exacta se deduce buscando la tabla cuyo identificador principal sea FSO_CO_ID
+
+Si existen varias tablas con el mismo prefijo, debe usarse la que funcionalmente corresponda al contexto del módulo.
+
+----------------------------------------
+6. INTERPRETACIÓN DE SUFIJOS DE COLUMNAS
+----------------------------------------
+
+Aunque puede haber variaciones, estos sufijos suelen indicar el tipo de dato o propósito:
+
+- _CO_ID       -> identificador numérico / clave
+- _DS_         -> descripción o texto
+- _DT_         -> fecha/hora
+- _BL_         -> booleano / bandera lógica
+
+Ejemplo real:
+- SOL_CO_ID         -> identificador de la solicitud
+- SOL_DS_NOMBRE     -> nombre o descripción de la solicitud
+- SOL_DT_CREATE     -> fecha de creación
+- SOL_BL_ENABLE     -> activo/inactivo
+- SOL_BL_DELETE     -> borrado lógico
+
+Estas convenciones deben mantenerse al crear nuevos campos o modificar modelos existentes.
+
+----------------------------------------
+7. EJEMPLO EXPLICADO
+----------------------------------------
+
+SQL de ejemplo:
+
+CREATE TABLE `t_sol_solicitudes` (
+  `SOL_CO_ID` int(11) NOT NULL,
+  `ESO_CO_ID` int(11) NOT NULL,
+  `FSO_CO_ID` int(11) NOT NULL,
+  `SOL_DS_NOMBRE` varchar(150) COLLATE utf8_unicode_ci NOT NULL,
+  `SOL_DT_CREATE` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `SOL_BL_ENABLE` tinyint(4) DEFAULT '1',
+  `SOL_BL_DELETE` tinyint(4) NOT NULL DEFAULT '0'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+Interpretación para el agente:
+
+- Tabla: t_sol_solicitudes
+- Prefijo de entidad: SOL
+- Clave primaria: SOL_CO_ID
+
+Campos:
+- SOL_CO_ID: ID principal de la solicitud
+- ESO_CO_ID: relación lógica con la entidad ESO
+- FSO_CO_ID: relación lógica con la entidad FSO
+- SOL_DS_NOMBRE: nombre de la solicitud
+- SOL_DT_CREATE: fecha de creación
+- SOL_BL_ENABLE: indicador de activo
+- SOL_BL_DELETE: indicador de borrado lógico
+
+Relaciones deducidas:
+- t_sol_solicitudes.ESO_CO_ID -> tabla de prefijo ESO, PK ESO_CO_ID
+- t_sol_solicitudes.FSO_CO_ID -> tabla de prefijo FSO, PK FSO_CO_ID
+
+Notas funcionales:
+- SOL_BL_DELETE = 0 significa registro no borrado
+- SOL_BL_DELETE = 1 significa borrado lógico
+- SOL_BL_ENABLE = 1 significa activo
+- SOL_BL_ENABLE = 0 significa inactivo
+
+----------------------------------------
+8. CÓMO DEBE ACTUAR EL AGENTE AL HACER CAMBIOS
+----------------------------------------
+
+Cuando se solicite modificar formularios, modelos o lógica, el agente debe seguir estas reglas:
+
+1. Identificar el prefijo de la tabla principal.
+2. Detectar su clave primaria como [PREFIJO]_CO_ID.
+3. Detectar claves foráneas lógicas como todos los campos XXX_CO_ID cuyo prefijo XXX no coincida con el de la tabla actual.
+4. Buscar la tabla de referencia por el prefijo XXX.
+5. Mantener coherencia entre:
+   - nombre de campos
+   - formularios
+   - validaciones
+   - consultas SQL
+   - joins manuales
+   - labels y combos
+   - mapeos del modelo
+6. Respetar el borrado lógico y los flags de activación cuando existan campos tipo _BL_DELETE o _BL_ENABLE.
+7. No asumir que existen restricciones FOREIGN KEY en la base de datos.
+8. No renombrar campos ni romper la convención de prefijos.
+9. Si se crea una consulta, construir manualmente los JOIN usando las claves deducidas por convención.
+10. Si se crea un formulario de edición o alta, usar las tablas maestras relacionadas para poblar selects cuando exista un XXX_CO_ID ajeno al prefijo principal.
+
+----------------------------------------
+9. REGLAS PARA GENERAR CONSULTAS O JOINS
+----------------------------------------
+
+Como las relaciones están en código, los JOIN deben inferirse.
+
+Ejemplo conceptual:
+- tabla principal: t_sol_solicitudes SOL
+- campo relacionado: ESO_CO_ID
+- tabla relacionada esperada: m_eso_estadosolicitud ESO
+
+Join esperado:
+- SOL.ESO_CO_ID = ESO.ESO_CO_ID
+
+Es decir, el lado izquierdo usa el campo foráneo de la tabla principal y el lado derecho la PK de la tabla relacionada.
+
+----------------------------------------
+10. REGLAS PARA FORMULARIOS
+----------------------------------------
+
+Si un formulario trabaja sobre una tabla principal:
+- los campos del propio prefijo son campos nativos de la entidad
+- los campos XXX_CO_ID con prefijo distinto son relaciones y normalmente deben mostrarse como select, autocomplete o buscador
+
+Ejemplo en t_sol_solicitudes:
+- SOL_DS_NOMBRE -> input de texto
+- ESO_CO_ID -> select de estado
+- FSO_CO_ID -> select o relación con catálogo FSO
+
+Además:
+- no mostrar normalmente la PK en formularios salvo que haga falta para edición interna
+- respetar valores por defecto
+- respetar flags de activo/borrado si forman parte de la lógica del módulo
+
+----------------------------------------
+11. REGLAS PARA MODELOS O ENTIDADES
+----------------------------------------
+
+En modelos, cada tabla debe mapear:
+- su PK principal
+- sus campos simples
+- sus relaciones lógicas deducidas por prefijo
+
+Aunque no haya ORM con relaciones explícitas, el agente debe interpretar que:
+- XXX_CO_ID es una referencia a otra entidad
+- puede ser necesario resolver el valor descriptivo mediante consulta adicional o JOIN manual
+
+----------------------------------------
+12. FORMATO RECOMENDADO PARA DOCUMENTAR CADA TABLA
+----------------------------------------
+
+Para ayudar al agente, cada tabla debería documentarse así:
+
+Tabla: t_sol_solicitudes
+Prefijo: SOL
+Tipo: Transaccional
+Clave primaria: SOL_CO_ID
+
+Campos:
+- SOL_CO_ID | int | PK
+- ESO_CO_ID | int | FK lógica -> prefijo ESO
+- FSO_CO_ID | int | FK lógica -> prefijo FSO
+- SOL_DS_NOMBRE | varchar(150) | texto
+- SOL_DT_CREATE | timestamp | fecha creación
+- SOL_BL_ENABLE | tinyint | activo/inactivo
+- SOL_BL_DELETE | tinyint | borrado lógico
+
+Relaciones deducidas:
+- ESO_CO_ID -> tabla con PK ESO_CO_ID
+- FSO_CO_ID -> tabla con PK FSO_CO_ID
+
+Observaciones:
+- Usar SOL_BL_DELETE para filtrar borrados lógicos
+- Usar SOL_BL_ENABLE para filtrar activos si aplica
+
+----------------------------------------
+13. INSTRUCCIÓN DIRECTA PARA COPILOT / AGENTE
+----------------------------------------
+
+A partir de ahora, interpreta la base de datos con estas reglas:
+
+- La clave primaria de cada tabla es el campo [PREFIJO_TABLA]_CO_ID.
+- Todo campo XXX_CO_ID cuyo prefijo no coincida con el de su tabla debe tratarse como una clave foránea lógica.
+- Las relaciones no están definidas con FOREIGN KEY en MySQL, pero sí existen funcionalmente en la aplicación.
+- Los JOIN, validaciones, combos de formularios y modelos deben construirse usando esta convención.
+- Debes respetar nombres de columnas, prefijos y lógica de borrado/activación.
+- No debes asumir relaciones automáticas del motor de base de datos; hay que deducirlas por nomenclatura.
+
+----------------------------------------
+14. RECOMENDACIÓN DE ENTRADA PARA EL AGENTE
+----------------------------------------
+
+Cuando se le pase una tabla al agente, conviene enviarla en este formato:
+
+1. SQL CREATE TABLE
+2. Explicación del prefijo de la tabla
+3. Identificación de la PK
+4. Lista de campos que son FK lógicas
+5. Nombre de tablas relacionadas si se conocen
+6. Reglas funcionales adicionales del módulo
+
+Ejemplo breve:
+
+Tabla: t_sol_solicitudes
+Prefijo: SOL
+PK: SOL_CO_ID
+FK lógicas:
+- ESO_CO_ID -> m_eso_estadosolicitud
+- FSO_CO_ID -> tabla con prefijo FSO
+
+Reglas:
+- filtrar por SOL_BL_DELETE = 0
+- usar SOL_BL_ENABLE para estado activo
+
+----------------------------------------
+15. CONCLUSIÓN
+----------------------------------------
+
+La base de datos debe interpretarse por convención de prefijos, no por restricciones físicas.
+El punto clave es:
+- PK = campo [prefijo tabla]_CO_ID
+- FK lógica = cualquier XXX_CO_ID cuyo prefijo no coincida con el de la tabla actual
+
+Con esta regla, el agente puede entender cómo modificar formularios, modelos, consultas y relaciones de negocio de forma consistente.
+
+----------------------------------------
+16. ESTRUCTURA ACTUAL DE LA BASE DE DATOS
+----------------------------------------
+
+A continuación se documenta la estructura actual de la base de datos a partir del SQL disponible.
+
+REGLAS DE INTERPRETACIÓN:
+- El prefijo funcional de cada tabla se identifica por el bloque central de su nombre.
+- Ejemplo:
+  - m_eso_estadosolicitud -> prefijo ESO
+  - t_sol_solicitudes -> prefijo SOL
+  - t_usr_usuarios -> prefijo USR
+- La clave primaria de cada tabla sigue la convención PREFIJO_CO_ID.
+- Cualquier campo XXX_CO_ID cuyo prefijo no coincida con el prefijo de la tabla actual debe tratarse como clave foránea lógica.
+- Estas relaciones no están definidas físicamente en MySQL mediante FOREIGN KEY, sino que se resuelven en código.
+- Los campos tipo BL suelen representar flags booleanos lógicos.
+- Los campos tipo DT suelen representar fechas.
+- Los campos tipo DS suelen representar descripciones o textos.
+- Los campos tipo NM suelen representar valores numéricos.
+
+--------------------------------------------------
+16.1. TABLA: m_eso_estadosolicitud
+--------------------------------------------------
+
+Nombre de tabla: m_eso_estadosolicitud
+Prefijo: ESO
+Tipo: Maestra
+Clave primaria: ESO_CO_ID
+Auto Increment: Sí
+
+Campos:
+- ESO_CO_ID | int(11) | PK | identificador único del estado de solicitud
+- ESO_DS_NAME | varchar(25) | texto | nombre del estado
+- ESO_BL_ENABLE | tinyint(4) | booleano lógico | indicador de activo, por defecto 1
+- ESO_BL_DELETE | tinyint(4) | booleano lógico | indicador de borrado lógico, por defecto 0
+
+Relaciones lógicas detectadas:
+- No se detectan claves foráneas lógicas en esta tabla
+
+Índices detectados:
+- PRIMARY KEY (ESO_CO_ID)
+
+Observaciones:
+- Tabla maestra para catalogar los estados posibles de una solicitud
+- Referenciada lógicamente desde otras tablas mediante ESO_CO_ID
+
+--------------------------------------------------
+16.2. TABLA: m_fso_fuentesolicitud
+--------------------------------------------------
+
+Nombre de tabla: m_fso_fuentesolicitud
+Prefijo: FSO
+Tipo: Maestra
+Clave primaria: FSO_CO_ID
+Auto Increment: Sí
+
+Campos:
+- FSO_CO_ID | int(11) | PK | identificador único de la fuente de solicitud
+- FSO_DS_NAME | varchar(25) | texto | nombre de la fuente
+- FSO_BL_ENABLE | tinyint(4) | booleano lógico | indicador de activo, por defecto 1
+- FSO_BL_DELETE | tinyint(4) | booleano lógico | indicador de borrado lógico, por defecto 0
+
+Relaciones lógicas detectadas:
+- No se detectan claves foráneas lógicas en esta tabla
+
+Índices detectados:
+- PRIMARY KEY (FSO_CO_ID)
+
+Observaciones:
+- Tabla maestra para catalogar el origen o fuente de una solicitud
+- Referenciada lógicamente desde otras tablas mediante FSO_CO_ID
+
+--------------------------------------------------
+16.3. TABLA: m_per_perfiles
+--------------------------------------------------
+
+Nombre de tabla: m_per_perfiles
+Prefijo: PER
+Tipo: Maestra
+Clave primaria: PER_CO_ID
+Auto Increment: Sí
+
+Campos:
+- PER_CO_ID | bigint(20) | PK | identificador único del perfil
+- PER_DS_NOMBRE | varchar(50) | texto | nombre del perfil
+- PER_DS_DESCRIPCION | varchar(150) | texto | descripción del perfil
+- PER_NM_ACCESO | int(11) | numérico | nivel o código de acceso asociado al perfil
+
+Relaciones lógicas detectadas:
+- No se detectan claves foráneas lógicas en esta tabla
+
+Índices detectados:
+- PRIMARY KEY (PER_CO_ID)
+
+Observaciones:
+- Tabla maestra de perfiles o roles de usuario
+- Referenciada lógicamente desde usuarios y accesos mediante PER_CO_ID
+
+--------------------------------------------------
+16.4. TABLA: t_apt_apitest
+--------------------------------------------------
+
+Nombre de tabla: t_apt_apitest
+Prefijo: APT
+Tipo: Transaccional / técnica
+Clave primaria: APT_CO_ID
+Auto Increment: Sí
+
+Campos:
+- APT_CO_ID | int(11) | PK | identificador único del registro
+- APT_DT_ACCESO | timestamp | fecha/hora | fecha de acceso, por defecto CURRENT_TIMESTAMP
+- APT_DS_DATA | text | texto largo | contenido o datos asociados al test de API
+
+Relaciones lógicas detectadas:
+- No se detectan claves foráneas lógicas en esta tabla
+
+Índices detectados:
+- PRIMARY KEY (APT_CO_ID)
+
+Observaciones:
+- Tabla orientada a pruebas técnicas o trazas de API
+- No presenta relaciones lógicas en el SQL facilitado
+
+--------------------------------------------------
+16.5. TABLA: t_log_accesos
+--------------------------------------------------
+
+Nombre de tabla: t_log_accesos
+Prefijo: LOG
+Tipo: Transaccional / log
+Clave primaria: LOC_CO_ID
+Auto Increment: Sí
+
+Campos:
+- LOC_CO_ID | int(11) | PK | identificador único del registro de acceso
+- USR_CO_ID | int(11) | FK lógica -> prefijo USR | usuario relacionado con el acceso
+- PER_CO_ID | int(11) | FK lógica -> prefijo PER | perfil relacionado con el acceso
+- LOG_DT_DATE | timestamp | fecha/hora | fecha del acceso, por defecto CURRENT_TIMESTAMP
+
+Relaciones lógicas detectadas:
+- t_log_accesos.USR_CO_ID -> tabla con prefijo USR y PK USR_CO_ID
+- t_log_accesos.PER_CO_ID -> tabla con prefijo PER y PK PER_CO_ID
+
+Índices detectados:
+- PRIMARY KEY (LOC_CO_ID)
+
+Observaciones:
+- Aunque el nombre de la tabla contiene LOG, la clave primaria usa el prefijo LOC_CO_ID
+- Este caso debe respetarse exactamente como está definido en la base de datos
+- Es importante no renombrar esta PK por convención teórica, sino usar el nombre real LOC_CO_ID
+- Registra accesos de usuario con perfil asociado
+
+--------------------------------------------------
+16.6. TABLA: t_sol_solicitudes
+--------------------------------------------------
+
+Nombre de tabla: t_sol_solicitudes
+Prefijo: SOL
+Tipo: Transaccional
+Clave primaria: SOL_CO_ID
+Auto Increment: Sí
+
+Campos:
+- SOL_CO_ID | int(11) | PK | identificador único de la solicitud
+- ESO_CO_ID | int(11) | FK lógica -> prefijo ESO | estado de la solicitud
+- FSO_CO_ID | int(11) | FK lógica -> prefijo FSO | fuente o procedencia de la solicitud
+- SOL_DS_NOMBRE | varchar(150) | texto | nombre asociado a la solicitud
+- SOL_DT_CREATE | timestamp | fecha/hora | fecha de creación, por defecto CURRENT_TIMESTAMP
+- SOL_BL_ENABLE | tinyint(4) | booleano lógico | indicador de activo, por defecto 1
+- SOL_BL_DELETE | tinyint(4) | booleano lógico | indicador de borrado lógico, por defecto 0
+
+Relaciones lógicas detectadas:
+- t_sol_solicitudes.ESO_CO_ID -> tabla con prefijo ESO y PK ESO_CO_ID
+- t_sol_solicitudes.FSO_CO_ID -> tabla con prefijo FSO y PK FSO_CO_ID
+
+Índices detectados:
+- PRIMARY KEY (SOL_CO_ID)
+
+Observaciones:
+- Tabla principal de solicitudes
+- Depende lógicamente de catálogos de estado y fuente
+- Debe respetarse el modelo de borrado lógico e indicador de activo
+
+--------------------------------------------------
+16.7. TABLA: t_usr_usuarios
+--------------------------------------------------
+
+Nombre de tabla: t_usr_usuarios
+Prefijo: USR
+Tipo: Transaccional
+Clave primaria: USR_CO_ID
+Auto Increment: Sí
+
+Campos:
+- USR_CO_ID | bigint(20) | PK | identificador único del usuario
+- USR_DS_LOGIN | varchar(50) | texto | login del usuario
+- USR_DS_PASSWORD | varchar(255) | texto | contraseña cifrada o hash
+- USR_DS_NOMBRE | varchar(100) | texto | nombre del usuario
+- USR_DS_APELLIDOS | varchar(100) | texto | apellidos del usuario
+- USR_DS_MAIL | varchar(100) | texto | correo electrónico
+- PER_CO_ID | bigint(20) | FK lógica -> prefijo PER | perfil del usuario
+- USR_DT_CREACION | timestamp | fecha/hora | fecha de creación, por defecto CURRENT_TIMESTAMP
+- USR_DT_ULTIMOACCESO | datetime | fecha/hora | fecha del último acceso
+- USR_NM_INTENTOSACCESO | int(10) unsigned | numérico | contador de intentos de acceso
+- USR_DT_ULTIMOINTENTOACCESO | datetime | fecha/hora | fecha del último intento de acceso
+- USR_BL_ACEPTADO | tinyint(4) | booleano lógico | indicador de usuario aceptado, por defecto 0
+- USR_BL_DESHABILITADO | tinyint(4) | booleano lógico | indicador de usuario deshabilitado, por defecto 0
+- USR_BL_ELIMINADO | tinyint(4) | booleano lógico | indicador de borrado lógico, por defecto 0
+- recoverToken | varchar(255) | texto | token de recuperación de cuenta o contraseña
+
+Relaciones lógicas detectadas:
+- t_usr_usuarios.PER_CO_ID -> tabla con prefijo PER y PK PER_CO_ID
+
+Índices detectados:
+- PRIMARY KEY (USR_CO_ID)
+
+Observaciones:
+- Tabla principal de usuarios del sistema
+- El perfil del usuario se resuelve lógicamente mediante PER_CO_ID
+- Incluye flags de control de acceso, activación y borrado lógico
+- Incluye token de recuperación de credenciales
+
+--------------------------------------------------
+16.8. MAPA GLOBAL DE RELACIONES LÓGICAS
+--------------------------------------------------
+
+Relaciones lógicas identificadas en el SQL actual:
+
+- t_sol_solicitudes.ESO_CO_ID -> m_eso_estadosolicitud.ESO_CO_ID
+- t_sol_solicitudes.FSO_CO_ID -> m_fso_fuentesolicitud.FSO_CO_ID
+- t_usr_usuarios.PER_CO_ID -> m_per_perfiles.PER_CO_ID
+- t_log_accesos.USR_CO_ID -> t_usr_usuarios.USR_CO_ID
+- t_log_accesos.PER_CO_ID -> m_per_perfiles.PER_CO_ID
+
+Resumen funcional:
+- ESO define los estados de solicitud
+- FSO define las fuentes de solicitud
+- PER define los perfiles o roles
+- USR almacena los usuarios del sistema
+- SOL almacena las solicitudes
+- LOG registra accesos relacionados con usuario y perfil
+- APT actúa como tabla técnica o de pruebas
+
+--------------------------------------------------
+16.9. REGLAS PARA EL AGENTE AL MODIFICAR FORMULARIOS Y MODELOS
+--------------------------------------------------
+
+El agente debe respetar las siguientes reglas al generar o modificar código:
+
+1. No asumir que existen FOREIGN KEY físicas en la base de datos.
+2. Resolver relaciones por convención de nombres:
+   - Si un campo XXX_CO_ID no coincide con el prefijo de la tabla, debe tratarse como relación lógica.
+3. Usar siempre los nombres reales de columnas definidos en SQL.
+4. Respetar tipos de datos exactos:
+   - int, bigint, varchar, text, datetime, timestamp, tinyint
+5. Respetar los flags lógicos existentes:
+   - BL_ENABLE / BL_DELETE
+   - BL_ACEPTADO / BL_DESHABILITADO / BL_ELIMINADO
+6. No eliminar ni renombrar columnas sin necesidad explícita.
+7. En formularios:
+   - Los campos de relación lógica deben poder resolverse mediante select, búsqueda o carga de catálogo cuando aplique.
+8. En modelos:
+   - Deben contemplarse las relaciones lógicas aunque no existan restricciones SQL.
+9. En listados y consultas:
+   - Puede ser necesario hacer joins manuales por convención de claves.
+10. Debe respetarse especialmente el caso de t_log_accesos, cuya PK real es LOC_CO_ID aunque la tabla tenga prefijo funcional LOG.
+
+--------------------------------------------------
+16.10. RESUMEN RÁPIDO POR TABLA
+--------------------------------------------------
+
+- m_eso_estadosolicitud
+  PK: ESO_CO_ID
+  Relaciones entrantes: desde t_sol_solicitudes.ESO_CO_ID
+
+- m_fso_fuentesolicitud
+  PK: FSO_CO_ID
+  Relaciones entrantes: desde t_sol_solicitudes.FSO_CO_ID
+
+- m_per_perfiles
+  PK: PER_CO_ID
+  Relaciones entrantes: desde t_usr_usuarios.PER_CO_ID y t_log_accesos.PER_CO_ID
+
+- t_apt_apitest
+  PK: APT_CO_ID
+  Sin relaciones lógicas detectadas
+
+- t_log_accesos
+  PK: LOC_CO_ID
+  Relaciones salientes: USR_CO_ID -> USR, PER_CO_ID -> PER
+
+- t_sol_solicitudes
+  PK: SOL_CO_ID
+  Relaciones salientes: ESO_CO_ID -> ESO, FSO_CO_ID -> FSO
+
+- t_usr_usuarios
+  PK: USR_CO_ID
+  Relaciones salientes: PER_CO_ID -> PER
