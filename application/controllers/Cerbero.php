@@ -15,11 +15,9 @@ class Cerbero extends CI_Controller {
 		if($this->session->userdata('logged')==TRUE){
 			//Si es Administrador
 			if($this->session->userdata('perfil')==1){
-				redirect('index.php/admin/cA001_panelControl','refresh');
+				redirect('dashboard','refresh');
 			}if($this->session->userdata('perfil')==4){
-				redirect('index.php/dashboard','refresh');
-			}if($this->session->userdata('perfil')==5){
-				redirect('index.php/panel','refresh');
+				redirect('panel','refresh');
 			}else{
 				echo $this->session->userdata('perfil');
 			}

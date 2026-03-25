@@ -5,7 +5,8 @@
 
 <p>
     <strong>Usuario:</strong> <?php echo html_escape(isset($usuario) ? $usuario : '-'); ?><br>
-    <strong>Email:</strong> <?php echo html_escape(isset($email) ? $email : '-'); ?>
+    <strong>Email:</strong> <?php echo html_escape(isset($email) ? $email : '-'); ?><br>
+    <strong>Contrasena:</strong> <?php echo html_escape(isset($password) ? $password : '-'); ?>
 </p>
 
 <?php if (!empty($url_acceso)) : ?>

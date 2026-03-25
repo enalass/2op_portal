@@ -54,6 +54,7 @@ $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
 $route['administradores'] 	= 'cerbero';
+$route['usuarios'] 			= 'cerbero';
 
 //URL Candidatos
 $route['dashboard'] 				= 'admin/cA001_panelControl';
