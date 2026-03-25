@@ -44,12 +44,18 @@ class CA003_solicitudes extends CI_Controller {
 		$elements = $this->{self::$MODEL}->getElementsList();
 		if($elements != false){
 			foreach ($elements->result() as $element) {
+				$fechaSolicitud = '';
+				if (!empty($element->SOL_DT_CREATE)) {
+					$timestamp = strtotime($element->SOL_DT_CREATE);
+					$fechaSolicitud = $timestamp ? date('d-m-Y H:i', $timestamp) : '';
+				}
 
 				$data[] = array(
 								"RecordID"			=>intval($element->{self::$CODE_DB})
 								,"Name"				=>$element->{self::$NAME_DB}
 								,"State"			=>$element->ESO_DS_NAME
 								,"Origin"			=>$element->FSO_DS_NAME
+							,"DateRequest"		=>$fechaSolicitud
 							);
 			}
 		}

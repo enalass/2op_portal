@@ -95,4 +95,5 @@ define('SERVER_CONTACT', 'smtp.gmail.com');
 define('USER_CONTACT', 'luisalbertonr@gmail.com');
 define('EMAIL_CONTACT', 'luisalbertonr@gmail.com');
 define('EMAIL_REPLY', 'luisalbertonr@gmail.com');
+define('EMAIL_ADMIN', USER_CONTACT); // Permite varios emails separados por coma o punto y coma.
 define('PASS_CONTACT', 'ortq kgie tkqd tdmu');

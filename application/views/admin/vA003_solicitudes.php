@@ -256,6 +256,16 @@
                     template: function(row) {
                       return row.Origin 
                     },
+                },
+                {
+                    field: 'DateRequest',
+                    title: 'Fecha solicitud',
+                    type: 'text',
+                    autoHide: false,
+                    textAlign: 'left',
+                    template: function(row) {
+                      return row.DateRequest ? row.DateRequest : '-';
+                    },
                 }, 
                 {
                     field: 'Actions',

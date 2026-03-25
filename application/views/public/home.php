@@ -301,8 +301,8 @@
           <div class="row justify-content-center">
         <div class="col-md-10 mt-2">
           <div class="">
-            <form class="zform formProcess">
-              <input type="hidden" name="to" value="info@segundaopinionradiologica.com" />
+            <form class="zform formProcess" action="<?php echo site_url('contacto/enviar'); ?>" method="post">
+              <input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>" />
               <div class="row align-items-center">
                 <div class="col-sm">
                   <div class="form-group"><label class="color-black fw-700 mb-0">Nombre</label><input class="form-control" type="text" name="nombre" placeholder="¿Cómo te llamas?"></div>
@@ -314,10 +314,10 @@
                 </div>
               </div>
               <div class="form-group"><label class="color-black fw-700 mb-0">Email</label><input class="form-control" type="email" name="email" placeholder="nombre@email.com"></div>
-              <div class="form-group"><label class="color-black fw-700 mb-0">Cuéntanos qué necesitas</label><textarea class="form-control" rows="5" name="Mensaje" placeholder="Escribe en detalle en qué podemos ayudarte"></textarea></div>
+              <div class="form-group"><label class="color-black fw-700 mb-0">Cuéntanos qué necesitas</label><textarea class="form-control" rows="5" name="mensaje" placeholder="Escribe en detalle en qué podemos ayudarte"></textarea></div>
               <div class="row justify-content-between">
                 <div class="col-sm">
-                  <div class="form-check text-left"><label class="form-check-label"><input class="form-check-input" type="checkbox" >Acepto<a href='https://2op.desarrolloinformatico.com/privacidad' target="_blank"><span class="fw-400 fs-0"> política de privacidad</span></a></label></div>
+                  <div class="form-check text-left"><label class="form-check-label"><input class="form-check-input" type="checkbox" name="acepto_privacidad" value="1" required>Acepto<a href='https://2op.desarrolloinformatico.com/privacidad' target="_blank"><span class="fw-400 fs-0"> política de privacidad</span></a></label></div>
                 </div>
                 <div class="col-sm-auto text-right mt-4 mt-sm-0">
                   <div class="form-group"><button class="btn botonCorporativoFondoClaro" type="submit" name="enviar" role="button">Enviar<span class="fa fa-angle-right ml-2"></span></button></div>
@@ -550,20 +550,39 @@
         if($('.formProcess').length){
             $('.formProcess').each(function(){
                 var $form = $(this);
+
+          function refreshCsrf(payload){
+            if (payload && payload.token && payload.hash) {
+              $form.find('input[name="' + payload.token + '"]').val(payload.hash);
+            }
+          }
+
                 $form.on('submit', function(e){
                     e.preventDefault();
                     var $submit = $form.find(":submit"),
-                        submitText = $submit.val();
-                    $submit.val("Enviando...");
+              submitText = $submit.text();
+            $submit.prop('disabled', true).text("Enviando...");
                     $.ajax({
                         type: 'post',
-                        url: 'form-processor.php',
-                        data: $(this).serialize(), // again, keep generic so this applies to any form
-                        success: function (result) {
-                            // $form.find(".zform-feedback").html(result);
-                            // $submit.val(submitText);
-                            // $form.trigger("reset");
-                          window.location = "/gracias";
+              url: $form.attr('action'),
+              data: $(this).serialize(),
+              dataType: 'json',
+              success: function (result) {
+                refreshCsrf(result);
+                if (result.status === 'success') {
+                  window.location = result.redirect ? result.redirect : '/gracias';
+                  return;
+                }
+
+                alert(result.msg ? result.msg : 'No se pudo enviar la solicitud');
+              },
+              error: function(xhr) {
+                var result = xhr.responseJSON ? xhr.responseJSON : null;
+                refreshCsrf(result);
+                alert((result && result.msg) ? result.msg : 'Error al procesar la solicitud');
+              },
+              complete: function() {
+                $submit.prop('disabled', false).text(submitText);
                         }
                     });
                 });

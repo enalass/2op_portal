@@ -22,5 +22,9 @@ $config['email_templates'] = array(
     'solicitud_informacion' => array(
         'subject' => 'Hemos recibido tu solicitud de informacion',
         'view' => 'solicitud_informacion'
+    ),
+    'nuevo_leed_admin' => array(
+        'subject' => 'Nuevo leed recibido #{lead_id} - {app_name}',
+        'view' => 'nuevo_leed_admin'
     )
 );

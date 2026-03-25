@@ -58,5 +58,7 @@ $route['administradores'] 	= 'cerbero';
 //URL Candidatos
 $route['dashboard'] 				= 'admin/cA001_panelControl';
 $route['panel']		 				= 'cliente/cC001_panelControl';
+$route['contacto/enviar']		    = 'publicController/enviarSolicitud';
+$route['gracias']		            = 'publicController/gracias';
 
 
