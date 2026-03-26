@@ -45,17 +45,26 @@
 		<hr>
 		<h5 class="mb-4">Datos pedido</h5>
 		<div class="row">
-			<div class="col-md-6">
+			<div class="col-md-4">
 				<div class="form-group">
 					<label for="ele_ped_importe" class="control-label">Importe</label>
 					@FIELD_PED_IMPORTE
 				</div>
 			</div>
-			<div class="col-md-6">
+			<div class="col-md-4">
 				<div class="form-group">
 					<label for="ele_ped_idioma" class="control-label">Idioma preferido</label>
 					@FIELD_PED_IDIOMA
 				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="form-group">
+					<label for="ele_pago_fecha_solicitud" class="control-label">Fecha solicitud pago</label>
+					@FIELD_PAGO_FECHA_SOLICITUD
+				</div>
+			</div>
+			<div class="col-md-12">
+				@FIELD_SOLICITAR_PAGO
 			</div>
 		</div>
 

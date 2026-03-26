@@ -177,6 +177,48 @@
               jQuery("#elementModal").modal();
         });
 
+        jQuery(document).on("click", "#buttonSolicitarPago", function(e){
+          e.preventDefault();
+
+          var $button = jQuery(this);
+          var originalText = $button.html();
+          var $form = jQuery('#formModalElement');
+
+          if ($form.length === 0) {
+            return;
+          }
+
+          $button.prop('disabled', true).html('Enviando solicitud de pago...');
+
+          jQuery.ajax({
+            url: '<?php echo base_url(); ?>index.php/admin/<?php echo $controller; ?>/solicitarPago',
+            method: 'POST',
+            dataType: 'json',
+            data: $form.serialize(),
+            success: function(response)
+            {
+              if(response.status=="success"){
+                jQuery("#erroresForm").hide();
+                jQuery("#elementModal").modal('hide');
+                jQuery("#kt_datatable").KTDatatable().reload();
+              }else{
+                jQuery("#erroresForm").show();
+                jQuery("#erroresForm").html(response.msg);
+                if(response.token && response.hash){
+                  jQuery("input[name='" + response.token + "']").val(response.hash);
+                }
+              }
+            },
+            error: function() {
+              jQuery("#erroresForm").show();
+              jQuery("#erroresForm").html('No se pudo solicitar el pago en este momento.');
+            },
+            complete: function() {
+              $button.prop('disabled', false).html(originalText);
+            }
+          });
+        });
+
 
 
     });

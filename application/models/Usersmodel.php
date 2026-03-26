@@ -114,6 +114,20 @@ class Usersmodel extends CI_Model {
 		}
 	}
 
+	function getUserByMail($mail){
+		$this->db->where('USR_DS_MAIL', $mail);
+		$this->db->where('USR_BL_ELIMINADO', '0');
+		$data = $this->db->get('t_usr_usuarios');
+
+		if ($data->num_rows() > 0){
+			foreach ($data->result() as $row) {
+				return $row;
+			}
+		}
+
+		return false;
+	}
+
 	
 
 	

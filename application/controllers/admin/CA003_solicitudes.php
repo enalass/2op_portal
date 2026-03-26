@@ -15,6 +15,7 @@ class CA003_solicitudes extends CI_Controller {
 	function __construct(){
 		parent::__construct();
 		$this->load->model(self::$MODEL);
+		$this->load->model('usersmodel');
 	}
 
 	public function index()
@@ -324,6 +325,131 @@ class CA003_solicitudes extends CI_Controller {
 		echo json_encode($resp);
 	}
 
+	public function solicitarPago(){
+		if($this->session->userdata('logged')!=TRUE || ($this->session->userdata('acceso'))<100){
+			echo "";
+			return;
+		}
+
+		$resp = array();
+		$_POST['ele_ped_importe'] = $this->normalizeImporteForValidation($this->input->post('ele_ped_importe', TRUE));
+
+		$this->form_validation->set_rules('ele_id', 'solicitud', 'required|integer');
+		$this->form_validation->set_rules('ele_ped_importe', 'importe', 'required|decimal');
+		$this->form_validation->set_rules('ele_ped_idioma', 'idioma preferido', 'required|trim|min_length[2]|max_length[5]|alpha_dash');
+
+		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
+
+		if($this->form_validation->run()==FALSE){
+			$resp = array(
+				"status"=>"unsuccess"
+				,"msg"=>validation_errors()
+				,"hash"=> 	$this->security->get_csrf_hash()
+				,"token"=> 	$this->security->get_csrf_token_name()
+			);
+			echo json_encode($resp);
+			return;
+		}
+
+		$id = (int)$this->input->post('ele_id', TRUE);
+		$solicitud = $this->{self::$MODEL}->getElementById($id);
+
+		if($solicitud === false){
+			$resp = array(
+				"status"=>"unsuccess"
+				,"msg"=>"La solicitud indicada no existe"
+				,"hash"=> 	$this->security->get_csrf_hash()
+				,"token"=> 	$this->security->get_csrf_token_name()
+			);
+			echo json_encode($resp);
+			return;
+		}
+
+		$importe = $this->input->post('ele_ped_importe', TRUE);
+		$idiomaIso = $this->input->post('ele_ped_idioma', TRUE);
+
+		$updateData = array(
+			self::$PREFIX . "_NM_IMPORTE" => $importe,
+			"IDI_CO_ISO" => $idiomaIso,
+		);
+		$this->{self::$MODEL}->updateElement($updateData, $id);
+
+		$to = trim((string)$this->input->post('ele_adq_mail', TRUE));
+		if($to === '' && isset($solicitud->{self::$PREFIX . '_DS_ADQ_MAIL'})){
+			$to = trim((string)$solicitud->{self::$PREFIX . '_DS_ADQ_MAIL'});
+		}
+		if($to === '' && isset($solicitud->{self::$PREFIX . '_DS_PAC_EMAIL'})){
+			$to = trim((string)$solicitud->{self::$PREFIX . '_DS_PAC_EMAIL'});
+		}
+
+		if($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)){
+			$resp = array(
+				"status"=>"unsuccess"
+				,"msg"=>"No hay un email de cliente valido para enviar la solicitud de pago"
+				,"hash"=> 	$this->security->get_csrf_hash()
+				,"token"=> 	$this->security->get_csrf_token_name()
+			);
+			echo json_encode($resp);
+			return;
+		}
+
+		$this->load->library('Emailtemplate');
+		$userCreated = $this->ensureClientUserForPayment($to, $this->input->post('ele_name', TRUE));
+		if ($userCreated['status'] === 'unsuccess') {
+			$resp = array(
+				"status"=>"unsuccess"
+				,"msg"=>$userCreated['msg']
+				,"hash"=> 	$this->security->get_csrf_hash()
+				,"token"=> 	$this->security->get_csrf_token_name()
+			);
+			echo json_encode($resp);
+			return;
+		}
+
+		$nombreIdioma = $this->getIdiomaNombreByIso($idiomaIso);
+		$payload = array(
+			'nombre' => $this->input->post('ele_name', TRUE),
+			'request_code' => $id,
+			'importe' => $this->formatImporteForMail($importe),
+			'url_acceso' => site_url('usuarios'),
+			'observaciones' => 'Idioma preferido: ' . $nombreIdioma,
+		);
+
+		$sent = $this->emailtemplate->sendSolicitudPago($to, $payload, array(
+			'from_email' => EMAIL_CONTACT,
+			'from_name' => 'Portal 2OP',
+			'reply_to' => EMAIL_REPLY,
+		));
+
+		if(!$sent){
+			$resp = array(
+				"status"=>"unsuccess"
+				,"msg"=>"Se guardaron importe e idioma, pero no se pudo enviar el email de pago"
+				,"hash"=> 	$this->security->get_csrf_hash()
+				,"token"=> 	$this->security->get_csrf_token_name()
+			);
+			echo json_encode($resp);
+			return;
+		}
+
+		$estadoData = array(
+			'ESO_CO_ID' => 2,
+		);
+		if ($this->hasPagoRequestDateColumn()) {
+			$estadoData['SOL_DT_PAGO_SOLICITADO'] = date('Y-m-d H:i:s');
+		}
+		$this->{self::$MODEL}->updateElement($estadoData, $id);
+
+		$resp = array(
+			"status"=>"success"
+			,"msg"=>"Solicitud de pago enviada correctamente"
+			,"hash"=> 	$this->security->get_csrf_hash()
+			,"token"=> 	$this->security->get_csrf_token_name()
+		);
+
+		echo json_encode($resp);
+	}
+
 	private function buildSolicitudFormFields($cat = null, $disabled = false, $action = 'add'){
 		$disabled = false;
 
@@ -373,6 +499,11 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		$estado_nombre = $get_value('ESO_DS_NAME', 'Leed');
+		$fecha_pago_solicitud = 'Pendiente solicitud pago';
+		$fecha_pago_raw = $get_value('SOL_DT_PAGO_SOLICITADO', '');
+		if(!empty($fecha_pago_raw)){
+			$fecha_pago_solicitud = $this->formatDateTimeLabel($fecha_pago_raw);
+		}
 
 		$field_map = array(
 			'@FIELD_ID' => form_hidden('ele_id', $get_value(self::$CODE_DB, '0')),
@@ -385,6 +516,10 @@ class CA003_solicitudes extends CI_Controller {
 			'@FIELD_ADQ_REASON' => form_textarea(array('name'=>'ele_adq_reason', 'id'=>'ele_adq_reason','class'=>$input_class,'rows'=>3,'placeholder'=>'Motivo', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MOTIVO'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_PED_IMPORTE' => form_input(array('name'=>'ele_ped_importe', 'id'=>'ele_ped_importe','class'=>$input_class,'type'=>'text','inputmode'=>'decimal', 'placeholder'=>'0.00', 'value'=>$get_value(self::$PREFIX . '_NM_IMPORTE'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_PED_IDIOMA' => form_dropdown('ele_ped_idioma', $idioma_options, $get_value('IDI_CO_ISO'), 'id="ele_ped_idioma" class="' . $input_class . '"' . $disabled_attr),
+			'@FIELD_PAGO_FECHA_SOLICITUD' => form_input(array('name'=>'ele_pago_fecha_solicitud', 'id'=>'ele_pago_fecha_solicitud','class'=>$input_class,'type'=>'text', 'value'=>$fecha_pago_solicitud, 'readonly'=>'readonly')),
+			'@FIELD_SOLICITAR_PAGO' => ($action === 'edit')
+				? '<button type="button" class="btn btn-warning" id="buttonSolicitarPago">Solicitar pago</button>'
+				: '',
 			'@FIELD_NOTAS' => form_textarea(array('name'=>'ele_notas', 'id'=>'ele_notas','class'=>$input_class,'rows'=>4,'placeholder'=>'Notas internas', 'value'=>$get_value(self::$PREFIX . '_DS_NOTAS'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_SOLICITANTE_TIPO' => form_dropdown('ele_solicitante_tipo', $solicitante_options, $get_value(self::$PREFIX . '_DS_SOLICITANTE_TIPO', 'PACIENTE'), 'id="ele_solicitante_tipo" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_PAC_NOMBRE' => form_input(array('name'=>'ele_pac_nombre', 'id'=>'ele_pac_nombre','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_NOMBRE'), 'disabled'=>$disabled ? 'disabled' : null)),
@@ -460,6 +595,112 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		return $intPart . '.' . substr($decPart, 0, 2);
+	}
+
+	private function getIdiomaNombreByIso($iso){
+		$iso = strtoupper(trim((string)$iso));
+		if($iso === ''){
+			return '-';
+		}
+
+		$idiomas = $this->{self::$MODEL}->getIdiomasActivos();
+		if($idiomas !== false){
+			foreach($idiomas->result() as $idioma){
+				if(strtoupper((string)$idioma->IDI_CO_ISO) === $iso){
+					return $idioma->IDI_DS_NOMBRE;
+				}
+			}
+		}
+
+		return $iso;
+	}
+
+	private function formatImporteForMail($importe){
+		$numeric = (float)$importe;
+		return number_format($numeric, 2, ',', '.') . ' EUR';
+	}
+
+	private function hasPagoRequestDateColumn(){
+		return $this->db->field_exists('SOL_DT_PAGO_SOLICITADO', 't_sol_solicitudes');
+	}
+
+	private function ensureClientUserForPayment($email, $name){
+		$existingUser = $this->usersmodel->getUserByMail($email);
+		if ($existingUser !== false) {
+			return array('status' => 'success', 'created' => false);
+		}
+
+		$passwordPlain = $this->generateTemporaryPassword();
+		$insertData = array(
+			'USR_DS_LOGIN' => $email,
+			'USR_DS_MAIL' => $email,
+			'USR_DS_PASSWORD' => password_hash($passwordPlain, PASSWORD_DEFAULT, array('cost'=>10)),
+			'USR_DS_NOMBRE' => trim((string)$name) !== '' ? $name : 'Usuario',
+			'USR_DS_APELLIDOS' => '',
+			'PER_CO_ID' => 4,
+			'USR_BL_ACEPTADO' => 1,
+		);
+
+		$userId = $this->usersmodel->insertUser($insertData);
+		if (!$userId) {
+			return array('status' => 'unsuccess', 'msg' => 'No se pudo crear el usuario del cliente');
+		}
+
+		$payload = array(
+			'nombre' => $insertData['USR_DS_NOMBRE'],
+			'usuario' => $email,
+			'email' => $email,
+			'password' => $passwordPlain,
+			'url_acceso' => site_url('usuarios'),
+		);
+
+		$sent = $this->emailtemplate->sendAltaUsuario($email, $payload, array(
+			'from_email' => EMAIL_CONTACT,
+			'from_name' => 'Portal 2OP',
+			'reply_to' => EMAIL_REPLY,
+		));
+
+		if (!$sent) {
+			return array('status' => 'unsuccess', 'msg' => 'Se creo el usuario pero no se pudo enviar el email de alta');
+		}
+
+		return array('status' => 'success', 'created' => true);
+	}
+
+	private function generateTemporaryPassword($length = 10){
+		$alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$%';
+		$max = strlen($alphabet) - 1;
+		$password = '';
+
+		for ($i = 0; $i < $length; $i++) {
+			$password .= $alphabet[$this->getRandomIndex($max)];
+		}
+
+		return $password;
+	}
+
+	private function getRandomIndex($max){
+		if (function_exists('random_int')) {
+			return random_int(0, $max);
+		}
+
+		if (function_exists('openssl_random_pseudo_bytes')) {
+			$byte = openssl_random_pseudo_bytes(1);
+			if ($byte !== false) {
+				return ord($byte) % ($max + 1);
+			}
+		}
+
+		return mt_rand(0, $max);
+	}
+
+	private function formatDateTimeLabel($dateTimeRaw){
+		$timestamp = strtotime((string)$dateTimeRaw);
+		if($timestamp === false){
+			return 'Pendiente solicitud pago';
+		}
+
+		return date('d-m-Y H:i', $timestamp);
 	}
 
 }
