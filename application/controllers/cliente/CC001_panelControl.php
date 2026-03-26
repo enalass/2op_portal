@@ -96,6 +96,7 @@ class CC001_panelControl extends CI_Controller {
 			"selectedSolicitudData" => $selectedSolicitudData,
 			"selectedSolicitudFiles" => $selectedSolicitudFiles,
 			"uploadWarningMessage" => $uploadWarningMessage,
+			"uploadTechnicalLogEnabled" => (bool)$this->config->item('upload_technical_log_enabled'),
 			"warningMessage" => $warningMessage,
 		);
 
@@ -240,6 +241,32 @@ class CC001_panelControl extends CI_Controller {
 
 		$this->applyLargeUploadRuntimeLimits();
 
+		$contentLength = (int)$this->input->server('CONTENT_LENGTH');
+		$postMaxBytes = $this->iniSizeToBytes(ini_get('post_max_size'));
+		if($contentLength > 0 && $postMaxBytes > 0 && $contentLength > $postMaxBytes){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>'El envio supera post_max_size (' . ini_get('post_max_size') . '). Reduce el lote o aumenta este limite en la configuracion de PHP del servidor.',
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if($contentLength > 0){
+			$tempDir = $this->getUploadTempDir();
+			$freeBytes = @disk_free_space($tempDir);
+			if(is_numeric($freeBytes) && (float)$freeBytes > 0 && (float)$freeBytes < (float)$contentLength){
+				echo json_encode(array(
+					"status"=>"unsuccess",
+					"msg"=>'Espacio insuficiente en carpeta temporal de PHP para recibir la subida. ' . $this->buildUploadTempDiagnostic() . ', tamano_peticion_mb=' . (int)floor(((float)$contentLength) / 1048576),
+					"hash"=> $this->security->get_csrf_hash(),
+					"token"=> $this->security->get_csrf_token_name()
+				));
+				return;
+			}
+		}
+
 		if(!$this->Solicitudarchivosmodel->canUse()){
 			echo json_encode(array(
 				"status"=>"unsuccess",
@@ -309,7 +336,8 @@ class CC001_panelControl extends CI_Controller {
 		}
 
 		$allowedExtensions = array('dcm', 'dicom', 'zip', 'pdf', 'jpg', 'png');
-		$maxBytes = 1024 * 1024 * 1024; // 1GB por archivo
+		$allowedExtractedExtensions = array('dcm', 'dicom', 'pdf', 'jpg', 'png');
+		$maxBytes = $this->getMaxUploadFileBytes();
 		$maxFiles = 1500;
 		$maxTotalBytes = (int)(1536 * 1024 * 1024); // 1.5GB total aprox
 		$uploaded = 0;
@@ -363,24 +391,59 @@ class CC001_panelControl extends CI_Controller {
 			$tmpName = isset($tmpNames[$i]) ? (string)$tmpNames[$i] : '';
 			$size = isset($sizes[$i]) ? (int)$sizes[$i] : 0;
 			$errorCode = isset($errorCodes[$i]) ? (int)$errorCodes[$i] : 4;
+			$isDicomWithoutExtension = false;
 
 			if($originalName === '' || $errorCode === 4){
 				continue;
 			}
 
 			if($errorCode !== 0){
-				$errors[] = 'Error al subir el archivo ' . html_escape($originalName);
+				$errors[] = $this->buildUploadErrorMessage($originalName, $errorCode);
 				continue;
 			}
 
 			$extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
 			if(!in_array($extension, $allowedExtensions, true)){
-				$errors[] = 'Extension no permitida: ' . html_escape($originalName);
-				continue;
+				if($extension === '' && $this->isDicomFileByContent($tmpName)){
+					$isDicomWithoutExtension = true;
+					$extension = 'dcm';
+				}else{
+					$errors[] = 'Extension no permitida: ' . html_escape($originalName);
+					continue;
+				}
 			}
 
 			if($size <= 0 || $size > $maxBytes){
 				$errors[] = 'Tamano no valido para ' . html_escape($originalName);
+				continue;
+			}
+
+			if($extension === 'zip'){
+				$zipStoredName = $this->buildStoredUploadName($solicitudId, $i, 'zip');
+				$zipPath = $uploadDir . DIRECTORY_SEPARATOR . $zipStoredName;
+
+				if(!is_uploaded_file($tmpName) || !@move_uploaded_file($tmpName, $zipPath)){
+					$errors[] = 'No se pudo mover el ZIP ' . html_escape($originalName);
+					continue;
+				}
+
+				$processedInZip = $this->processZipUploadFile(
+					$zipPath,
+					$originalName,
+					$solicitudId,
+					$userId,
+					$maxBytes,
+					$allowedExtractedExtensions,
+					$uploaded,
+					$uploadedItems,
+					$errors
+				);
+
+				@unlink($zipPath);
+				if($processedInZip <= 0){
+					$errors[] = 'El ZIP no contiene ficheros validos procesables: ' . html_escape($originalName);
+				}
+
 				continue;
 			}
 
@@ -416,7 +479,7 @@ class CC001_panelControl extends CI_Controller {
 			$uploaded++;
 			$uploadedItems[] = array(
 				'nombre_original' => $safeOriginal,
-				'extension' => strtoupper($extension),
+				'extension' => $isDicomWithoutExtension ? 'DICOM' : strtoupper($extension),
 				'tam_bytes' => (int)$size,
 				'fecha' => $this->formatDate(date('Y-m-d H:i:s')),
 			);
@@ -445,6 +508,355 @@ class CC001_panelControl extends CI_Controller {
 		$msg = 'Archivos subidos correctamente (' . $uploaded . ')';
 		if(!empty($errors)){
 			$msg .= '<br>Algunos archivos no se pudieron procesar:<br>' . implode('<br>', $errors);
+		}
+
+		echo json_encode(array(
+			"status"=>"success",
+			"msg"=>$msg,
+			"uploaded_count"=>$uploaded,
+			"uploaded_files"=>$uploadedItems,
+			"hash"=> $this->security->get_csrf_hash(),
+			"token"=> $this->security->get_csrf_token_name()
+		));
+	}
+
+	public function subirEstudioClienteChunk(){
+		if($this->session->userdata('logged')!=TRUE || (int)$this->session->userdata('perfil')!==4){
+			echo "";
+			return;
+		}
+
+		$this->applyLargeUploadRuntimeLimits();
+
+		if(!$this->Solicitudarchivosmodel->canUse()){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"No se puede guardar la subida porque falta la tabla de archivos de solicitud",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$userId = (int)$this->session->userdata('id');
+		$solicitudId = (int)$this->input->post('ele_id', TRUE);
+		$chunkIndex = (int)$this->input->post('chunk_index', TRUE);
+		$totalChunks = (int)$this->input->post('total_chunks', TRUE);
+		$totalSize = (int)$this->input->post('total_size', TRUE);
+		$chunkOffset = (int)$this->input->post('chunk_offset', TRUE);
+		$chunkEnd = (int)$this->input->post('chunk_end', TRUE);
+		$isLastChunkFlag = (int)$this->input->post('is_last_chunk', TRUE) === 1;
+		$originalName = trim((string)$this->input->post('original_name', TRUE));
+		$uploadTokenRaw = trim((string)$this->input->post('upload_token', TRUE));
+
+		if($solicitudId <= 0 || $chunkIndex < 0 || $totalChunks <= 0 || $originalName === '' || $uploadTokenRaw === ''){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"Peticion chunk invalida",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$uploadToken = preg_replace('/[^A-Za-z0-9_-]/', '', $uploadTokenRaw);
+		if($uploadToken === ''){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"Token de chunk invalido",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$solicitud = $this->Solicitudmodel->getClientSolicitudById($userId, $solicitudId);
+		if($solicitud === false){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"La solicitud indicada no existe o no pertenece al cliente autenticado",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if((int)$solicitud->ESO_CO_ID < 5){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"La solicitud aun no esta disponible para subida de estudios",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if(!isset($_FILES['chunk']) || !isset($_FILES['chunk']['tmp_name'])){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"No se recibio el chunk",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$chunkError = isset($_FILES['chunk']['error']) ? (int)$_FILES['chunk']['error'] : 4;
+		if($chunkError !== 0){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>$this->buildUploadErrorMessage($originalName, $chunkError),
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$chunkTmp = (string)$_FILES['chunk']['tmp_name'];
+		if(!is_uploaded_file($chunkTmp)){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"Chunk invalido recibido",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$chunkDir = $this->getChunkTempDirectory($solicitudId);
+		if(!is_dir($chunkDir) && !@mkdir($chunkDir, 0755, true)){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"No se pudo preparar almacenamiento temporal de chunks",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$chunkBase = 'u' . $userId . '_s' . $solicitudId . '_' . $uploadToken;
+		$chunkPath = $chunkDir . DIRECTORY_SEPARATOR . $chunkBase . '.part';
+
+		if($chunkIndex === 0 && is_file($chunkPath)){
+			@unlink($chunkPath);
+		}
+
+		$currentSize = is_file($chunkPath) ? (int)@filesize($chunkPath) : 0;
+		$incomingChunkSize = isset($_FILES['chunk']['size']) ? (int)$_FILES['chunk']['size'] : 0;
+		$skipWriteBecauseAlreadyPersisted = false;
+		$derivedOffset = -1;
+		if($chunkEnd > 0 && $incomingChunkSize > 0){
+			$derivedOffset = $chunkEnd - $incomingChunkSize;
+		}
+		if($derivedOffset >= 0){
+			$chunkOffset = $derivedOffset;
+		}
+
+		if($chunkOffset < 0){
+			$chunkOffset = $currentSize;
+		}
+
+		if($chunkOffset < $currentSize){
+			$alreadyPersisted = ($incomingChunkSize > 0 && ($chunkOffset + $incomingChunkSize) <= $currentSize);
+			if($alreadyPersisted){
+				$isLastChunkRetry = $isLastChunkFlag || (($chunkIndex + 1) >= $totalChunks);
+				if($totalSize > 0 && $currentSize >= $totalSize){
+					$isLastChunkRetry = true;
+				}
+				if(!$isLastChunkRetry){
+					echo json_encode(array(
+						"status"=>"partial",
+						"msg"=>'Chunk duplicado ignorado ' . ($chunkIndex + 1) . '/' . $totalChunks,
+						"next_offset"=>$currentSize,
+						"hash"=> $this->security->get_csrf_hash(),
+						"token"=> $this->security->get_csrf_token_name()
+					));
+					return;
+				}
+
+				$skipWriteBecauseAlreadyPersisted = true;
+			}else{
+				echo json_encode(array(
+					"status"=>"resync",
+					"msg"=>'Desfase detectado en chunks para ' . html_escape($originalName),
+					"next_offset"=>$currentSize,
+					"hash"=> $this->security->get_csrf_hash(),
+					"token"=> $this->security->get_csrf_token_name()
+				));
+				return;
+			}
+		}
+
+		if($chunkOffset > $currentSize){
+			echo json_encode(array(
+				"status"=>"resync",
+				"msg"=>"Offset de chunk invalido para " . html_escape($originalName),
+				"next_offset"=>$currentSize,
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$written = 0;
+		if(!$skipWriteBecauseAlreadyPersisted){
+			$sourceHandle = @fopen($chunkTmp, 'rb');
+			$targetHandle = @fopen($chunkPath, 'c+b');
+			if($sourceHandle === false || $targetHandle === false){
+				if(is_resource($sourceHandle)){ @fclose($sourceHandle); }
+				if(is_resource($targetHandle)){ @fclose($targetHandle); }
+				echo json_encode(array(
+					"status"=>"unsuccess",
+					"msg"=>"No se pudo almacenar temporalmente el chunk",
+					"hash"=> $this->security->get_csrf_hash(),
+					"token"=> $this->security->get_csrf_token_name()
+				));
+				return;
+			}
+
+			if(!@flock($targetHandle, LOCK_EX)){
+				@fclose($sourceHandle);
+				@fclose($targetHandle);
+				echo json_encode(array(
+					"status"=>"unsuccess",
+					"msg"=>"No se pudo bloquear el archivo temporal del chunk",
+					"hash"=> $this->security->get_csrf_hash(),
+					"token"=> $this->security->get_csrf_token_name()
+				));
+				return;
+			}
+
+			@fseek($targetHandle, $chunkOffset);
+			while(!feof($sourceHandle)){
+				$buffer = fread($sourceHandle, 8192);
+				if($buffer === false || $buffer === ''){
+					continue;
+				}
+
+				$bufferLength = strlen($buffer);
+				$offset = 0;
+				while($offset < $bufferLength){
+					$w = fwrite($targetHandle, substr($buffer, $offset));
+					if($w === false || $w === 0){
+						$written = -1;
+						break 2;
+					}
+					$offset += $w;
+					$written += $w;
+				}
+			}
+
+			@fflush($targetHandle);
+			@flock($targetHandle, LOCK_UN);
+			@fclose($sourceHandle);
+			@fclose($targetHandle);
+		}
+
+		if($written < 0){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"No se pudo escribir un chunk en disco",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if(!$skipWriteBecauseAlreadyPersisted && $incomingChunkSize > 0 && $written !== $incomingChunkSize){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"No se pudo persistir el chunk completo en disco",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$confirmedSize = is_file($chunkPath) ? (int)@filesize($chunkPath) : ($chunkOffset + max(0, $written));
+		$isLastChunk = false;
+		if($totalSize > 0 && $chunkEnd > 0){
+			$isLastChunk = ($chunkEnd >= $totalSize);
+		}else if($totalSize > 0 && $confirmedSize >= $totalSize){
+			$isLastChunk = true;
+		}else if($isLastChunkFlag){
+			$isLastChunk = true;
+		}else{
+			$isLastChunk = (($chunkIndex + 1) >= $totalChunks);
+		}
+
+		if(!$isLastChunk){
+			$newSize = $confirmedSize;
+			echo json_encode(array(
+				"status"=>"partial",
+				"msg"=>'Chunk ' . ($chunkIndex + 1) . '/' . $totalChunks . ' recibido',
+				"next_offset"=>$newSize,
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$assembledSize = is_file($chunkPath) ? (int)@filesize($chunkPath) : 0;
+		if($totalSize > 0 && $assembledSize !== $totalSize){
+			if($assembledSize > $totalSize){
+				@unlink($chunkPath);
+			}
+			echo json_encode(array(
+				"status"=>"resync",
+				"msg"=>'Tamano final inconsistente para ' . html_escape($originalName),
+				"next_offset"=>$assembledSize,
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$uploaded = 0;
+		$uploadedItems = array();
+		$errors = array();
+		$allowedExtensions = array('dcm', 'dicom', 'zip', 'pdf', 'jpg', 'png');
+		$allowedExtractedExtensions = array('dcm', 'dicom', 'pdf', 'jpg', 'png');
+		$maxBytes = $this->getMaxUploadFileBytes();
+
+		$processedOk = $this->processStoredFileUpload(
+			$chunkPath,
+			$originalName,
+			$solicitudId,
+			$userId,
+			$maxBytes,
+			$allowedExtensions,
+			$allowedExtractedExtensions,
+			$uploaded,
+			$uploadedItems,
+			$errors,
+			0
+		);
+
+		@unlink($chunkPath);
+
+		if(!$processedOk || $uploaded <= 0){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=> !empty($errors) ? implode('<br>', $errors) : 'No se ha subido ningun archivo valido',
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		$statusChanged = false;
+		if((int)$solicitud->ESO_CO_ID < 6){
+			$this->Solicitudmodel->updateElement(array('ESO_CO_ID' => 6), $solicitudId);
+			$statusChanged = true;
+		}
+
+		if($statusChanged){
+			$this->notifyAdminEstudioSubido($solicitudId, isset($solicitud->SOL_DS_NOMBRE) ? (string)$solicitud->SOL_DS_NOMBRE : '');
+		}
+
+		$msg = 'Archivo subido correctamente por chunks (' . $uploaded . ')';
+		if(!empty($errors)){
+			$msg .= '<br>Algunas entradas no se pudieron procesar:<br>' . implode('<br>', $errors);
 		}
 
 		echo json_encode(array(
@@ -1144,6 +1556,251 @@ class CC001_panelControl extends CI_Controller {
 		return $base . $ext;
 	}
 
+	private function processZipUploadFile($zipPath, $zipOriginalName, $solicitudId, $userId, $maxBytes, $allowedExtractedExtensions, &$uploaded, &$uploadedItems, &$errors){
+		if(!class_exists('ZipArchive')){
+			$errors[] = 'No se puede procesar el ZIP ' . html_escape($zipOriginalName) . ': ZipArchive no esta disponible en el servidor';
+			return 0;
+		}
+
+		$zip = new ZipArchive();
+		$openResult = $zip->open($zipPath);
+		if($openResult !== true){
+			$errors[] = 'No se pudo abrir el ZIP ' . html_escape($zipOriginalName);
+			return 0;
+		}
+
+		$uploadDir = $this->getSolicitudUploadDirectory($solicitudId);
+		$processed = 0;
+		$entryCounter = 0;
+		$allowedExtractedExtensions = is_array($allowedExtractedExtensions) ? $allowedExtractedExtensions : array();
+
+		for($entryIndex = 0; $entryIndex < $zip->numFiles; $entryIndex++){
+			$stat = $zip->statIndex($entryIndex);
+			if($stat === false || !isset($stat['name'])){
+				continue;
+			}
+
+			$entryName = str_replace('\\', '/', (string)$stat['name']);
+			if($entryName === '' || substr($entryName, -1) === '/'){
+				continue;
+			}
+
+			$baseName = basename($entryName);
+			if($baseName === '' || $baseName === '.' || $baseName === '..'){
+				continue;
+			}
+
+			if(substr($baseName, 0, 1) === '.' || strpos($baseName, '._') === 0){
+				continue;
+			}
+
+			$extension = strtolower(pathinfo($baseName, PATHINFO_EXTENSION));
+			$hasAllowedExtension = in_array($extension, $allowedExtractedExtensions, true);
+
+			$stream = $zip->getStream($stat['name']);
+			if($stream === false){
+				$errors[] = 'No se pudo leer una entrada del ZIP ' . html_escape($zipOriginalName);
+				continue;
+			}
+
+			$tempPath = $uploadDir . DIRECTORY_SEPARATOR . 'tmp_zip_' . uniqid((string)$solicitudId, true);
+			$tempHandle = @fopen($tempPath, 'wb');
+			if($tempHandle === false){
+				@fclose($stream);
+				$errors[] = 'No se pudo crear temporal para procesar ZIP ' . html_escape($zipOriginalName);
+				continue;
+			}
+
+			$currentSize = 0;
+			$sizeExceeded = false;
+			while(!feof($stream)){
+				$buffer = fread($stream, 8192);
+				if($buffer === false){
+					$buffer = '';
+				}
+				if($buffer === ''){
+					continue;
+				}
+
+				$currentSize += strlen($buffer);
+				if($currentSize > $maxBytes){
+					$sizeExceeded = true;
+					break;
+				}
+
+				fwrite($tempHandle, $buffer);
+			}
+
+			@fclose($stream);
+			@fclose($tempHandle);
+
+			if($sizeExceeded || $currentSize <= 0){
+				@unlink($tempPath);
+				$errors[] = 'Tamano no valido para archivo dentro del ZIP: ' . html_escape($baseName);
+				continue;
+			}
+
+			$isDicomWithoutExtension = false;
+			if(!$hasAllowedExtension){
+				if($extension === '' && $this->isDicomFileByContent($tempPath)){
+					$isDicomWithoutExtension = true;
+					$extension = 'dcm';
+				}else{
+					@unlink($tempPath);
+					continue;
+				}
+			}
+
+			$safeOriginal = $this->sanitizeUploadName($baseName);
+			$storedName = $this->buildStoredUploadName($solicitudId, $entryCounter, $extension);
+			$entryCounter++;
+			$targetPath = $uploadDir . DIRECTORY_SEPARATOR . $storedName;
+
+			if(!@rename($tempPath, $targetPath)){
+				@unlink($tempPath);
+				$errors[] = 'No se pudo mover archivo extraido del ZIP: ' . html_escape($baseName);
+				continue;
+			}
+
+			$relativePath = 'uploadDocumentation/' . $solicitudId . '/' . $storedName;
+			$insertData = array(
+				'SOL_CO_ID' => $solicitudId,
+				'USR_CO_ID' => $userId,
+				'SAR_DS_NOMBRE_ORIGINAL' => $safeOriginal,
+				'SAR_DS_NOMBRE_GUARDADO' => $storedName,
+				'SAR_DS_RUTA' => $relativePath,
+				'SAR_NM_TAM_BYTES' => (int)$currentSize,
+				'SAR_DS_EXTENSION' => $extension,
+				'SAR_DT_CREATE' => date('Y-m-d H:i:s'),
+				'SAR_BL_ENABLE' => 1,
+				'SAR_BL_DELETE' => 0,
+			);
+
+			if($this->Solicitudarchivosmodel->insertArchivo($insertData) === false){
+				@unlink($targetPath);
+				$errors[] = 'No se pudo registrar el archivo extraido del ZIP: ' . html_escape($baseName);
+				continue;
+			}
+
+			$uploaded++;
+			$processed++;
+			$uploadedItems[] = array(
+				'nombre_original' => $safeOriginal,
+				'extension' => $isDicomWithoutExtension ? 'DICOM' : strtoupper($extension),
+				'tam_bytes' => (int)$currentSize,
+				'fecha' => $this->formatDate(date('Y-m-d H:i:s')),
+			);
+		}
+
+		$zip->close();
+
+		return $processed;
+	}
+
+	private function processStoredFileUpload($sourcePath, $originalName, $solicitudId, $userId, $maxBytes, $allowedExtensions, $allowedExtractedExtensions, &$uploaded, &$uploadedItems, &$errors, $index){
+		$path = (string)$sourcePath;
+		if($path === '' || !is_file($path)){
+			$errors[] = 'No se pudo localizar el archivo temporal ' . html_escape($originalName);
+			return false;
+		}
+
+		$size = (int)@filesize($path);
+		if($size <= 0 || $size > $maxBytes){
+			$errors[] = 'Tamano no valido para ' . html_escape($originalName);
+			return false;
+		}
+
+		$extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+		$isDicomWithoutExtension = false;
+		if(!in_array($extension, $allowedExtensions, true)){
+			if($extension === '' && $this->isDicomFileByContent($path)){
+				$isDicomWithoutExtension = true;
+				$extension = 'dcm';
+			}else{
+				$errors[] = 'Extension no permitida: ' . html_escape($originalName);
+				return false;
+			}
+		}
+
+		$uploadDir = $this->getSolicitudUploadDirectory($solicitudId);
+		if(!is_dir($uploadDir) && !@mkdir($uploadDir, 0755, true)){
+			$errors[] = 'No se pudo preparar el directorio de subida';
+			return false;
+		}
+
+		if($extension === 'zip'){
+			$zipStoredName = $this->buildStoredUploadName($solicitudId, (int)$index, 'zip');
+			$zipPath = $uploadDir . DIRECTORY_SEPARATOR . $zipStoredName;
+			if(!@rename($path, $zipPath)){
+				$errors[] = 'No se pudo mover el ZIP ' . html_escape($originalName);
+				return false;
+			}
+
+			$processedInZip = $this->processZipUploadFile(
+				$zipPath,
+				$originalName,
+				$solicitudId,
+				$userId,
+				$maxBytes,
+				$allowedExtractedExtensions,
+				$uploaded,
+				$uploadedItems,
+				$errors
+			);
+
+			@unlink($zipPath);
+			if($processedInZip <= 0){
+				$errors[] = 'El ZIP no contiene ficheros validos procesables: ' . html_escape($originalName);
+				return false;
+			}
+
+			return true;
+		}
+
+		$safeOriginal = $this->sanitizeUploadName($originalName);
+		$storedName = $this->buildStoredUploadName($solicitudId, (int)$index, $extension);
+		$targetPath = $uploadDir . DIRECTORY_SEPARATOR . $storedName;
+
+		if(!@rename($path, $targetPath)){
+			$errors[] = 'No se pudo mover el archivo ' . html_escape($originalName);
+			return false;
+		}
+
+		$relativePath = 'uploadDocumentation/' . $solicitudId . '/' . $storedName;
+		$insertData = array(
+			'SOL_CO_ID' => $solicitudId,
+			'USR_CO_ID' => $userId,
+			'SAR_DS_NOMBRE_ORIGINAL' => $safeOriginal,
+			'SAR_DS_NOMBRE_GUARDADO' => $storedName,
+			'SAR_DS_RUTA' => $relativePath,
+			'SAR_NM_TAM_BYTES' => $size,
+			'SAR_DS_EXTENSION' => $extension,
+			'SAR_DT_CREATE' => date('Y-m-d H:i:s'),
+			'SAR_BL_ENABLE' => 1,
+			'SAR_BL_DELETE' => 0,
+		);
+
+		if($this->Solicitudarchivosmodel->insertArchivo($insertData) === false){
+			@unlink($targetPath);
+			$errors[] = 'No se pudo registrar el archivo ' . html_escape($originalName);
+			return false;
+		}
+
+		$uploaded++;
+		$uploadedItems[] = array(
+			'nombre_original' => $safeOriginal,
+			'extension' => $isDicomWithoutExtension ? 'DICOM' : strtoupper($extension),
+			'tam_bytes' => (int)$size,
+			'fecha' => $this->formatDate(date('Y-m-d H:i:s')),
+		);
+
+		return true;
+	}
+
+	private function getChunkTempDirectory($solicitudId){
+		return rtrim(APPPATH, '/\\') . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'chunks' . DIRECTORY_SEPARATOR . (int)$solicitudId;
+	}
+
 	private function notifyAdminEstudioSubido($solicitudId, $nombreCliente){
 		$to = defined('EMAIL_ADMIN') ? EMAIL_ADMIN : '';
 		if(trim((string)$to) === ''){
@@ -1178,6 +1835,126 @@ class CC001_panelControl extends CI_Controller {
 		@ini_set('max_file_uploads', '2000');
 		@ini_set('max_execution_time', '1800');
 		@ini_set('max_input_time', '1800');
+	}
+
+	private function buildUploadErrorMessage($originalName, $errorCode){
+		$safeName = html_escape((string)$originalName);
+		$code = (int)$errorCode;
+
+		if($code === 1){
+			return 'Error al subir ' . $safeName . ': supera upload_max_filesize (' . ini_get('upload_max_filesize') . ')';
+		}
+
+		if($code === 2){
+			return 'Error al subir ' . $safeName . ': supera MAX_FILE_SIZE definido en el formulario';
+		}
+
+		if($code === 3){
+			return 'Error al subir ' . $safeName . ': subida parcial (UPLOAD_ERR_PARTIAL)';
+		}
+
+		if($code === 6){
+			return 'Error al subir ' . $safeName . ': falta carpeta temporal en servidor (UPLOAD_ERR_NO_TMP_DIR)';
+		}
+
+		if($code === 7){
+			return 'Error al subir ' . $safeName . ': no se pudo escribir en disco (UPLOAD_ERR_CANT_WRITE). ' . $this->buildUploadTempDiagnostic();
+		}
+
+		if($code === 8){
+			return 'Error al subir ' . $safeName . ': extension PHP detuvo la subida (UPLOAD_ERR_EXTENSION)';
+		}
+
+		return 'Error al subir ' . $safeName . ': codigo ' . $code . '. Revisa upload_max_filesize=' . ini_get('upload_max_filesize') . ' y post_max_size=' . ini_get('post_max_size');
+	}
+
+	private function buildUploadTempDiagnostic(){
+		$tempDir = $this->getUploadTempDir();
+		$exists = is_dir($tempDir);
+		$writable = $exists ? is_writable($tempDir) : false;
+		$freeBytes = $exists ? @disk_free_space($tempDir) : false;
+		$freeMb = is_numeric($freeBytes) ? (int)floor(((float)$freeBytes) / 1048576) : -1;
+
+		$parts = array();
+		$parts[] = 'tmp_dir=' . $tempDir;
+		$parts[] = 'existe=' . ($exists ? 'si' : 'no');
+		$parts[] = 'escribible=' . ($writable ? 'si' : 'no');
+		if($freeMb >= 0){
+			$parts[] = 'espacio_libre_mb=' . $freeMb;
+		}
+
+		return implode(', ', $parts);
+	}
+
+	private function getUploadTempDir(){
+		$uploadTmpDir = trim((string)ini_get('upload_tmp_dir'));
+		if($uploadTmpDir !== ''){
+			return $uploadTmpDir;
+		}
+
+		return (string)sys_get_temp_dir();
+	}
+
+	private function iniSizeToBytes($value){
+		$raw = trim((string)$value);
+		if($raw === ''){
+			return 0;
+		}
+
+		$unit = strtolower(substr($raw, -1));
+		$number = (float)$raw;
+		if($number <= 0){
+			return 0;
+		}
+
+		if($unit === 'g'){
+			$number *= 1024;
+			$unit = 'm';
+		}
+
+		if($unit === 'm'){
+			$number *= 1024;
+			$unit = 'k';
+		}
+
+		if($unit === 'k'){
+			$number *= 1024;
+		}
+
+		return (int)round($number);
+	}
+
+	private function getMaxUploadFileBytes(){
+		$fromConfig = $this->config->item('upload_max_file_bytes');
+		if(is_numeric($fromConfig)){
+			$value = (int)$fromConfig;
+			if($value > 0){
+				return $value;
+			}
+		}
+
+		return (int)(4 * 1024 * 1024 * 1024); // 4GB por archivo
+	}
+
+	private function isDicomFileByContent($filePath){
+		$path = (string)$filePath;
+		if($path === '' || !is_file($path) || !is_readable($path)){
+			return false;
+		}
+
+		$handle = @fopen($path, 'rb');
+		if($handle === false){
+			return false;
+		}
+
+		$header = fread($handle, 132);
+		@fclose($handle);
+
+		if($header === false || strlen($header) < 132){
+			return false;
+		}
+
+		return substr($header, 128, 4) === 'DICM';
 	}
 
 }

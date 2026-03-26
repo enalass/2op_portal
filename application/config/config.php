@@ -531,3 +531,15 @@ $config['rewrite_short_tags'] = FALSE;
 | Array:		array('10.0.1.200', '192.168.5.0/24')
 */
 $config['proxy_ips'] = '';
+
+/*
+|--------------------------------------------------------------------------
+| Upload technical browser logging
+|--------------------------------------------------------------------------
+|
+| TRUE  => el frontend mostrara mensajes genericos al usuario y dejara
+|          detalles tecnicos en console.log para diagnostico.
+| FALSE => no se mostraran detalles tecnicos en consola.
+|
+*/
+$config['upload_technical_log_enabled'] = TRUE;

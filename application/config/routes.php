@@ -65,6 +65,9 @@ $route['panel/pago/ok']			= 'cliente/CC001_panelControl/redsysReturnOk';
 $route['panel/pago/ko']			= 'cliente/CC001_panelControl/redsysReturnKo';
 $route['panel/datos/guardar']	= 'cliente/CC001_panelControl/guardarDatosCliente';
 $route['panel/estudio/subir']	= 'cliente/CC001_panelControl/subirEstudioCliente';
+$route['panel/estudio/subir_chunk'] = 'cliente/CC001_panelControl/subirEstudioClienteChunk';
+$route['panel/perfil']			= 'cliente/CC002_perfil';
+$route['panel/perfil/guardar']	= 'cliente/CC002_perfil/guardar';
 $route['contacto/enviar']		    = 'publicController/enviarSolicitud';
 $route['gracias']		            = 'publicController/gracias';
 

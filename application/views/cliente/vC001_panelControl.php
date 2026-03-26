@@ -4,6 +4,7 @@ $selectedSolicitud = isset($selectedSolicitud) && is_array($selectedSolicitud) ?
 $selectedSolicitudData = isset($selectedSolicitudData) && is_array($selectedSolicitudData) ? $selectedSolicitudData : array();
 $selectedSolicitudFiles = isset($selectedSolicitudFiles) && is_array($selectedSolicitudFiles) ? $selectedSolicitudFiles : array();
 $uploadWarningMessage = isset($uploadWarningMessage) ? $uploadWarningMessage : '';
+$uploadTechnicalLogEnabled = !empty($uploadTechnicalLogEnabled);
 $warningMessage = isset($warningMessage) ? $warningMessage : '';
 $csrfTokenName = $this->security->get_csrf_token_name();
 $csrfTokenHash = $this->security->get_csrf_hash();
@@ -81,7 +82,7 @@ $isLockedState = ($estadoClienteActual >= 7);
                                 </div>
                             <?php endif; ?>
 
-                            <details class="mb-4" open>
+                            <details class="mb-4">
                                 <summary class="font-weight-bold mb-3" style="cursor:pointer;">Datos personales</summary>
                             <div class="card border mb-0 bg-white">
                                 <div class="card-body">
@@ -254,7 +255,6 @@ $isLockedState = ($estadoClienteActual >= 7);
                                         <?php endif; ?>
                                     </form>
                                 </div>
-                            </div>
                             </div>
                             </details>
                         <?php endif; ?>
@@ -568,6 +568,7 @@ $isLockedState = ($estadoClienteActual >= 7);
 <script type="text/javascript">
     (function(){
         function byId(id){ return document.getElementById(id); }
+        var uploadTechnicalLogEnabled = <?php echo $uploadTechnicalLogEnabled ? 'true' : 'false'; ?>;
 
         function showError(msg){
             var e = byId('studyUploadErrors');
@@ -581,6 +582,29 @@ $isLockedState = ($estadoClienteActual >= 7);
             var s = byId('studyUploadSuccess');
             if(e){ e.style.display = 'none'; e.innerHTML = ''; }
             if(s){ s.style.display = 'block'; s.innerHTML = msg; }
+        }
+
+        function maybeLogTechnical(context, technicalMsg){
+            if(!uploadTechnicalLogEnabled){ return; }
+            if(!technicalMsg){ return; }
+            if(!window.console || typeof window.console.log !== 'function'){ return; }
+            window.console.log('[Upload][Tecnico][' + context + '] ' + technicalMsg);
+        }
+
+        function buildUploadClientError(response, fallbackUserMessage){
+            var technical = '';
+            if(response && typeof response === 'object'){
+                if(typeof response.technical_msg === 'string' && response.technical_msg !== ''){
+                    technical = response.technical_msg;
+                }else if(typeof response.msg === 'string' && response.msg !== ''){
+                    technical = response.msg;
+                }
+            }
+
+            return {
+                userMsg: fallbackUserMessage,
+                technicalMsg: technical
+            };
         }
 
         function escapeHtml(text){
@@ -707,6 +731,29 @@ $isLockedState = ($estadoClienteActual >= 7);
             fileInput.files = dt.files;
         }
 
+        var CHUNK_THRESHOLD_BYTES = 25 * 1024 * 1024; // >25MB usa chunks
+        var CHUNK_SIZE_BYTES = 10 * 1024 * 1024; // 10MB por chunk
+
+        function splitFilesByStrategy(files){
+            var normalFiles = [];
+            var largeFiles = [];
+
+            for(var i = 0; i < files.length; i++){
+                var file = files[i];
+                var size = (file && file.size) ? file.size : 0;
+                if(size > CHUNK_THRESHOLD_BYTES){
+                    largeFiles.push(file);
+                }else{
+                    normalFiles.push(file);
+                }
+            }
+
+            return {
+                normalFiles: normalFiles,
+                largeFiles: largeFiles
+            };
+        }
+
         function splitFilesInBatches(files){
             var maxFilesPerBatch = 20;
             var maxBytesPerBatch = 200 * 1024 * 1024; // 200MB por lote
@@ -762,7 +809,10 @@ $isLockedState = ($estadoClienteActual >= 7);
                 };
 
                 xhr.onerror = function(){
-                    reject('Error de red durante la subida del lote.');
+                    reject({
+                        userMsg: 'No se pudieron subir los archivos. Intentalo de nuevo.',
+                        technicalMsg: 'Error de red durante la subida del lote.'
+                    });
                 };
 
                 xhr.onreadystatechange = function(){
@@ -777,7 +827,7 @@ $isLockedState = ($estadoClienteActual >= 7);
                         return;
                     }
 
-                    reject((response && response.msg) ? response.msg : 'No se pudo procesar el lote.');
+                    reject(buildUploadClientError(response, 'No se pudieron subir los archivos. Intentalo de nuevo.'));
                 };
 
                 xhr.send(formData);
@@ -790,6 +840,168 @@ $isLockedState = ($estadoClienteActual >= 7);
                     throw err;
                 }
                 return uploadBatchWithRetry(batchFiles, onProgress, retriesLeft - 1);
+            });
+        }
+
+        function uploadChunkRequest(file, uploadToken, chunkIndex, totalChunks, chunkBlob, chunkOffset, chunkEnd, isLastChunk, onProgress){
+            return new Promise(function(resolve, reject){
+                var csrf = byId('studyUploadCsrf');
+                var formData = new FormData();
+                formData.append('ele_id', '<?php echo (int)$selectedSolicitud['id']; ?>');
+                formData.append(csrf.getAttribute('name'), csrf.value);
+                formData.append('upload_token', uploadToken);
+                formData.append('original_name', file.name || 'archivo');
+                formData.append('chunk_index', String(chunkIndex));
+                formData.append('total_chunks', String(totalChunks));
+                formData.append('chunk_offset', String(chunkOffset));
+                formData.append('chunk_end', String(chunkEnd));
+                formData.append('is_last_chunk', isLastChunk ? '1' : '0');
+                formData.append('total_size', String(file.size || 0));
+                formData.append('chunk', chunkBlob, file.name || 'chunk.bin');
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', '<?php echo site_url('panel/estudio/subir_chunk'); ?>', true);
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+                xhr.upload.onprogress = function(evt){
+                    if(!evt.lengthComputable){ return; }
+                    var loaded = chunkOffset + evt.loaded;
+                    if(typeof onProgress === 'function'){
+                        onProgress(loaded);
+                    }
+                };
+
+                xhr.onerror = function(){
+                    reject({
+                        userMsg: 'No se pudo completar la subida del archivo grande. Intentalo de nuevo.',
+                        technicalMsg: 'Error de red durante la subida por chunks.'
+                    });
+                };
+
+                xhr.onreadystatechange = function(){
+                    if(xhr.readyState !== 4){ return; }
+
+                    var response = null;
+                    try { response = JSON.parse(xhr.responseText); } catch (e) { response = null; }
+                    refreshCsrf(response || {});
+
+                    if(xhr.status >= 200 && xhr.status < 300 && response && (response.status === 'partial' || response.status === 'success' || response.status === 'resync')){
+                        resolve(response);
+                        return;
+                    }
+
+                    reject(buildUploadClientError(response, 'No se pudo completar la subida del archivo grande. Intentalo de nuevo.'));
+                };
+
+                xhr.send(formData);
+            });
+        }
+
+        function uploadChunkRequestWithRetry(file, uploadToken, chunkIndex, totalChunks, chunkBlob, chunkOffset, chunkEnd, isLastChunk, onProgress, retriesLeft){
+            return uploadChunkRequest(file, uploadToken, chunkIndex, totalChunks, chunkBlob, chunkOffset, chunkEnd, isLastChunk, onProgress).catch(function(err){
+                if(retriesLeft <= 0){
+                    throw err;
+                }
+                return uploadChunkRequestWithRetry(file, uploadToken, chunkIndex, totalChunks, chunkBlob, chunkOffset, chunkEnd, isLastChunk, onProgress, retriesLeft - 1);
+            });
+        }
+
+        function uploadLargeFileInChunks(file, onProgress){
+            return new Promise(function(resolve, reject){
+                var size = (file && file.size) ? file.size : 0;
+                if(size <= 0){
+                    reject('Tamano de archivo invalido para subida por chunks.');
+                    return;
+                }
+
+                var totalChunks = Math.max(1, Math.ceil(size / CHUNK_SIZE_BYTES));
+                var uploadToken = String(Date.now()) + '_' + String(Math.floor(Math.random() * 1000000));
+                var nextOffset = 0;
+                var lastResyncOffset = -1;
+                var repeatedResyncCount = 0;
+
+                function processChunk(chunkIndex){
+                    var start = nextOffset;
+                    if(start >= size){
+                        reject('No se pudo completar la subida por chunks: el servidor no confirmo el ultimo tramo.');
+                        return;
+                    }
+
+                    var end = Math.min(start + CHUNK_SIZE_BYTES, size);
+                    var computedChunkIndex = Math.floor(start / CHUNK_SIZE_BYTES);
+                    var isLastChunk = end >= size;
+                    var blob = file.slice(start, end);
+
+                    uploadChunkRequestWithRetry(
+                        file,
+                        uploadToken,
+                        computedChunkIndex,
+                        totalChunks,
+                        blob,
+                        start,
+                        end,
+                        isLastChunk,
+                        function(loaded){
+                            if(typeof onProgress === 'function'){
+                                onProgress(Math.min(size, loaded));
+                            }
+                        },
+                        2
+                    ).then(function(response){
+                        if(response && response.status === 'resync'){
+                            var serverOffset = parseInt(response.next_offset, 10);
+                            if(isNaN(serverOffset) || serverOffset < 0 || serverOffset > size){
+                                reject((response && response.msg) ? response.msg : 'No se pudo resincronizar la subida por chunks.');
+                                return;
+                            }
+
+                            if(serverOffset === lastResyncOffset){
+                                repeatedResyncCount++;
+                            }else{
+                                repeatedResyncCount = 0;
+                                lastResyncOffset = serverOffset;
+                            }
+
+                            if(repeatedResyncCount >= 5){
+                                reject('Resincronizacion repetida en offset ' + serverOffset + '.');
+                                return;
+                            }
+
+                            nextOffset = serverOffset;
+                            if(typeof onProgress === 'function'){
+                                onProgress(nextOffset);
+                            }
+
+                            var restartIndex = Math.floor(nextOffset / CHUNK_SIZE_BYTES);
+                            processChunk(restartIndex);
+                            return;
+                        }
+
+                        var confirmedOffset = parseInt(response && response.next_offset, 10);
+                        if(isNaN(confirmedOffset) || confirmedOffset < end){
+                            confirmedOffset = end;
+                        }
+                        if(confirmedOffset > size){
+                            confirmedOffset = size;
+                        }
+                        nextOffset = confirmedOffset;
+
+                        if(typeof onProgress === 'function'){
+                            onProgress(nextOffset);
+                        }
+
+                        if(response && response.status === 'success'){
+                            resolve(response);
+                            return;
+                        }
+
+                        processChunk(chunkIndex + 1);
+                    }).catch(function(err){
+                        reject(err);
+                    });
+                }
+
+                processChunk(0);
             });
         }
 
@@ -840,8 +1052,11 @@ $isLockedState = ($estadoClienteActual >= 7);
                 totalBytes += fileInput.files[i].size || 0;
             }
 
-            var batches = splitFilesInBatches(files);
-            if(batches.length === 0){
+            var strategy = splitFilesByStrategy(files);
+            var normalBatches = splitFilesInBatches(strategy.normalFiles);
+            var largeFiles = strategy.largeFiles;
+
+            if(normalBatches.length === 0 && largeFiles.length === 0){
                 showError('No hay archivos validos para subir.');
                 return;
             }
@@ -854,47 +1069,93 @@ $isLockedState = ($estadoClienteActual >= 7);
             var uploadedBytesDone = 0;
             var aggregatedWarnings = [];
 
-            function setOverallProgress(batchBytes, batchPct){
+            function setOverallProgressByBytes(loadedBytes){
                 if(!progressBar){ return; }
-                var overallLoaded = uploadedBytesDone + Math.round((batchBytes * batchPct) / 100);
+                var overallLoaded = Math.max(0, loadedBytes);
                 var overallPct = totalBytes > 0 ? Math.round((overallLoaded / totalBytes) * 100) : 0;
                 if(overallPct > 100){ overallPct = 100; }
                 progressBar.style.width = overallPct + '%';
                 progressBar.textContent = overallPct + '%';
             }
 
-            function processBatch(index){
-                if(index >= batches.length){
-                    button.disabled = false;
-                    button.textContent = 'Subir estudios';
-                    if(progressWrap){ progressWrap.style.display = 'none'; }
-                    if(progressBar){ progressBar.style.width = '0%'; progressBar.textContent = '0%'; }
+            function finishUpload(){
+                button.disabled = false;
+                button.textContent = 'Subir estudios';
+                if(progressWrap){ progressWrap.style.display = 'none'; }
+                if(progressBar){ progressBar.style.width = '0%'; progressBar.textContent = '0%'; }
 
-                    var successMsg = 'Subida completada en ' + batches.length + ' lote(s).';
-                    if(aggregatedWarnings.length > 0){
-                        successMsg += '<br>Observaciones:<br>' + aggregatedWarnings.join('<br>');
-                    }
-                    showSuccess(successMsg);
-                    fileInput.value = '';
-                    renderPendingSummary([]);
-                    var selectedInfo = byId('studySelectedFiles');
-                    if(selectedInfo){ selectedInfo.textContent = 'No hay archivos seleccionados.'; }
+                var successMsg = 'Subida completada. Lotes normales: ' + normalBatches.length + '. Ficheros por chunks: ' + largeFiles.length + '.';
+                if(aggregatedWarnings.length > 0){
+                    successMsg += '<br>Observaciones:<br>' + aggregatedWarnings.join('<br>');
+                }
+                showSuccess(successMsg);
+                fileInput.value = '';
+                renderPendingSummary([]);
+                var selectedInfo = byId('studySelectedFiles');
+                if(selectedInfo){ selectedInfo.textContent = 'No hay archivos seleccionados.'; }
+            }
+
+            function processLargeFile(index){
+                if(index >= largeFiles.length){
+                    finishUpload();
                     return;
                 }
 
-                var batchFiles = batches[index];
+                var file = largeFiles[index];
+                var fileBytes = (file && file.size) ? file.size : 0;
+                var initialDone = uploadedBytesDone;
+                button.textContent = 'Subiendo archivo grande ' + (index + 1) + '/' + largeFiles.length + ' por chunks...';
+
+                uploadLargeFileInChunks(file, function(fileLoadedBytes){
+                    setOverallProgressByBytes(initialDone + fileLoadedBytes);
+                }).then(function(result){
+                    uploadedBytesDone += fileBytes;
+                    setOverallProgressByBytes(uploadedBytesDone);
+
+                    if(result && result.uploaded_files){
+                        appendUploadedRows(result.uploaded_files);
+                    }
+
+                    if(result && result.msg && result.msg.indexOf('no se pudieron procesar') !== -1){
+                        aggregatedWarnings.push('Archivo por chunks ' + escapeHtml(file.name || ('#' + (index + 1))) + ': revisa incidencias en el servidor.');
+                    }
+
+                    processLargeFile(index + 1);
+                }).catch(function(errorMsg){
+                    button.disabled = false;
+                    button.textContent = 'Subir estudios';
+                    var userMsg = 'No se pudo completar la subida del archivo grande. Intentalo de nuevo.';
+                    var technicalMsg = '';
+                    if(errorMsg && typeof errorMsg === 'object'){
+                        if(errorMsg.userMsg){ userMsg = errorMsg.userMsg; }
+                        if(errorMsg.technicalMsg){ technicalMsg = errorMsg.technicalMsg; }
+                    }else if(typeof errorMsg === 'string'){
+                        technicalMsg = errorMsg;
+                    }
+                    maybeLogTechnical('chunks', technicalMsg);
+                    showError(userMsg);
+                });
+            }
+
+            function processBatch(index){
+                if(index >= normalBatches.length){
+                    processLargeFile(0);
+                    return;
+                }
+
+                var batchFiles = normalBatches[index];
                 var batchBytes = 0;
                 for(var b = 0; b < batchFiles.length; b++){
                     batchBytes += batchFiles[b].size || 0;
                 }
 
-                button.textContent = 'Subiendo lote ' + (index + 1) + '/' + batches.length + '...';
+                button.textContent = 'Subiendo lote ' + (index + 1) + '/' + normalBatches.length + '...';
 
                 uploadBatchWithRetry(batchFiles, function(batchPct){
-                    setOverallProgress(batchBytes, batchPct);
+                    setOverallProgressByBytes(uploadedBytesDone + Math.round((batchBytes * batchPct) / 100));
                 }, 2).then(function(result){
                     uploadedBytesDone += batchBytes;
-                    setOverallProgress(0, 0);
+                    setOverallProgressByBytes(uploadedBytesDone);
 
                     if(result && result.uploaded_files){
                         appendUploadedRows(result.uploaded_files);
@@ -908,11 +1169,24 @@ $isLockedState = ($estadoClienteActual >= 7);
                 }).catch(function(errorMsg){
                     button.disabled = false;
                     button.textContent = 'Subir estudios';
-                    showError((errorMsg && typeof errorMsg === 'string') ? errorMsg : 'No se pudieron subir los archivos.');
+                    var userMsg = 'No se pudieron subir los archivos. Intentalo de nuevo.';
+                    var technicalMsg = '';
+                    if(errorMsg && typeof errorMsg === 'object'){
+                        if(errorMsg.userMsg){ userMsg = errorMsg.userMsg; }
+                        if(errorMsg.technicalMsg){ technicalMsg = errorMsg.technicalMsg; }
+                    }else if(typeof errorMsg === 'string'){
+                        technicalMsg = errorMsg;
+                    }
+                    maybeLogTechnical('lotes', technicalMsg);
+                    showError(userMsg);
                 });
             }
 
-            processBatch(0);
+            if(normalBatches.length > 0){
+                processBatch(0);
+            }else{
+                processLargeFile(0);
+            }
         }
 
         function initUploadedFilesPagination(){
