@@ -80,6 +80,7 @@ $csrfTokenHash = $this->security->get_csrf_hash();
                                     </div>
 
                                     <div id="clientDataErrors" class="alert alert-danger" style="display:none;"></div>
+                                    <div id="minorRuleNotice" class="alert alert-warning" style="display:none;">Paciente menor de 18 anos: el tipo solicitante debe ser TUTOR.</div>
 
                                     <form id="clientDataForm" method="post" action="javascript:void(0);">
                                         <input type="hidden" name="ele_id" value="<?php echo (int)$selectedSolicitud['id']; ?>">
@@ -324,9 +325,23 @@ $csrfTokenHash = $this->security->get_csrf_hash();
 <?php if ($selectedSolicitud && (int)$selectedSolicitud['estado_cliente_id'] === 4): ?>
 <script type="text/javascript">
     (function(){
-        function toggleTutorBlockNative(){
-            var select = document.getElementById('ele_solicitante_tipo');
-            var block = document.getElementById('tutorDataBlock');
+        function byId(id){
+            return document.getElementById(id);
+        }
+
+        function refreshCsrf(payload){
+            var csrfInput = byId('clientDataCsrf');
+            if(!csrfInput || !payload || !payload.token || !payload.hash){
+                return;
+            }
+
+            csrfInput.setAttribute('name', payload.token);
+            csrfInput.value = payload.hash;
+        }
+
+        function toggleTutorBlock(){
+            var select = byId('ele_solicitante_tipo');
+            var block = byId('tutorDataBlock');
             if(!select || !block){
                 return;
             }
@@ -334,51 +349,101 @@ $csrfTokenHash = $this->security->get_csrf_hash();
             block.style.display = (select.value === 'TUTOR') ? 'block' : 'none';
         }
 
-        document.addEventListener('DOMContentLoaded', function(){
-            var select = document.getElementById('ele_solicitante_tipo');
-            if(select){
-                select.addEventListener('change', toggleTutorBlockNative);
+        function calculateAgeFromInput(value){
+            if(!value){
+                return -1;
             }
-            toggleTutorBlockNative();
-        });
-    })();
 
-    jQuery(function(){
-        function refreshCsrf(payload){
-            if(payload && payload.token && payload.hash){
-                var $csrfInput = jQuery('#clientDataCsrf');
-                $csrfInput.attr('name', payload.token).val(payload.hash);
+            var parts = value.split('-');
+            if(parts.length !== 3){
+                return -1;
             }
+
+            var year = parseInt(parts[0], 10);
+            var month = parseInt(parts[1], 10) - 1;
+            var day = parseInt(parts[2], 10);
+            var birth = new Date(year, month, day);
+            if(isNaN(birth.getTime())){
+                return -1;
+            }
+
+            var today = new Date();
+            var age = today.getFullYear() - birth.getFullYear();
+            var m = today.getMonth() - birth.getMonth();
+            if(m < 0 || (m === 0 && today.getDate() < birth.getDate())){
+                age--;
+            }
+
+            return age;
         }
 
-        function toggleTutorBlock(){
-            var isTutor = jQuery('#ele_solicitante_tipo').val() === 'TUTOR';
-            if(isTutor){
-                jQuery('#tutorDataBlock').show();
+        function enforceMinorTutorRule(){
+            var birthInput = document.querySelector('input[name="ele_pac_fecha_nacimiento"]');
+            var select = byId('ele_solicitante_tipo');
+            var notice = byId('minorRuleNotice');
+            if(!birthInput || !select || !notice){
+                return;
+            }
+
+            var age = calculateAgeFromInput(birthInput.value);
+            var isMinor = age >= 0 && age < 18;
+            if(isMinor){
+                notice.style.display = 'block';
+                if(select.value !== 'TUTOR'){
+                    select.value = 'TUTOR';
+                }
             }else{
-                jQuery('#tutorDataBlock').hide();
+                notice.style.display = 'none';
             }
+
+            toggleTutorBlock();
         }
 
-        toggleTutorBlock();
-        jQuery(document).on('change', '#ele_solicitante_tipo', toggleTutorBlock);
+        function showError(message){
+            var errors = byId('clientDataErrors');
+            if(!errors){
+                return;
+            }
 
-        jQuery(document).on('click', '#buttonGuardarDatosCliente', function(e){
-            e.preventDefault();
+            errors.innerHTML = message || 'No se pudieron guardar los datos.';
+            errors.style.display = 'block';
+        }
 
-            var $button = jQuery(this);
-            var $form = jQuery('#clientDataForm');
-            var $errors = jQuery('#clientDataErrors');
+        function clearError(){
+            var errors = byId('clientDataErrors');
+            if(!errors){
+                return;
+            }
 
-            $errors.hide().html('');
-            $button.prop('disabled', true).text('Guardando...');
+            errors.innerHTML = '';
+            errors.style.display = 'none';
+        }
 
-            jQuery.ajax({
+        function submitClientData(){
+            var form = byId('clientDataForm');
+            var button = byId('buttonGuardarDatosCliente');
+            if(!form || !button){
+                return;
+            }
+
+            clearError();
+            enforceMinorTutorRule();
+
+            button.disabled = true;
+            button.textContent = 'Guardando...';
+
+            var body = new URLSearchParams(new FormData(form));
+
+            fetch('<?php echo site_url('panel/datos/guardar'); ?>', {
                 method: 'POST',
-                url: '<?php echo site_url('panel/datos/guardar'); ?>',
-                dataType: 'json',
-                data: $form.serialize()
-            }).done(function(result){
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body,
+                credentials: 'same-origin'
+            }).then(function(response){
+                return response.json();
+            }).then(function(result){
                 refreshCsrf(result || {});
 
                 if(result && result.status === 'success'){
@@ -386,15 +451,51 @@ $csrfTokenHash = $this->security->get_csrf_hash();
                     return;
                 }
 
-                var message = (result && result.msg) ? result.msg : 'No se pudieron guardar los datos.';
-                $errors.html(message).show();
-                $button.prop('disabled', false).text('Guardar datos');
-            }).fail(function(){
-                $errors.html('No se pudieron guardar los datos. Intentalo de nuevo.').show();
-                $button.prop('disabled', false).text('Guardar datos');
+                showError((result && result.msg) ? result.msg : 'No se pudieron guardar los datos.');
+                button.disabled = false;
+                button.textContent = 'Guardar datos';
+            }).catch(function(){
+                showError('No se pudieron guardar los datos. Intentalo de nuevo.');
+                button.disabled = false;
+                button.textContent = 'Guardar datos';
             });
+        }
+
+        document.addEventListener('DOMContentLoaded', function(){
+            var select = byId('ele_solicitante_tipo');
+            var birthInput = document.querySelector('input[name="ele_pac_fecha_nacimiento"]');
+            var button = byId('buttonGuardarDatosCliente');
+            var form = byId('clientDataForm');
+
+            if(select){
+                select.addEventListener('change', function(){
+                    toggleTutorBlock();
+                    enforceMinorTutorRule();
+                });
+            }
+
+            if(birthInput){
+                birthInput.addEventListener('change', enforceMinorTutorRule);
+            }
+
+            if(button){
+                button.addEventListener('click', function(e){
+                    e.preventDefault();
+                    submitClientData();
+                });
+            }
+
+            if(form){
+                form.addEventListener('submit', function(e){
+                    e.preventDefault();
+                    submitClientData();
+                });
+            }
+
+            toggleTutorBlock();
+            enforceMinorTutorRule();
         });
-    });
+    })();
 </script>
 <?php endif; ?>
 

@@ -461,6 +461,29 @@ class CC001_panelControl extends CI_Controller {
 
 		$userId = (int)$this->session->userdata('id');
 		$solicitudId = (int)$this->input->post('ele_id', TRUE);
+		$fechaNacimientoPaciente = trim((string)$this->input->post('ele_pac_fecha_nacimiento', TRUE));
+		$edadPaciente = $this->calculateAge($fechaNacimientoPaciente);
+
+		if($edadPaciente < 0){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"La fecha de nacimiento del paciente no es valida",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if($edadPaciente < 18 && $tipoSolicitante !== 'TUTOR'){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>"Si el paciente es menor de 18 anos, debes seleccionar tipo solicitante TUTOR",
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
 		$solicitud = $this->Solicitudmodel->getClientSolicitudById($userId, $solicitudId);
 
 		if($solicitud === false){
@@ -1028,6 +1051,26 @@ class CC001_panelControl extends CI_Controller {
 		$randomPart = str_pad((string)mt_rand(0, 99), 2, '0', STR_PAD_LEFT);
 
 		return $dayOfYear . $solicitudPart . $randomPart;
+	}
+
+	private function calculateAge($birthDate){
+		$birthDate = trim((string)$birthDate);
+		if($birthDate === ''){
+			return -1;
+		}
+
+		$dt = DateTime::createFromFormat('Y-m-d', $birthDate);
+		if(!$dt || $dt->format('Y-m-d') !== $birthDate){
+			return -1;
+		}
+
+		$today = new DateTime('today');
+		if($dt > $today){
+			return -1;
+		}
+
+		$diff = $today->diff($dt);
+		return (int)$diff->y;
 	}
 
 	private function getSolicitudUploadDirectory($solicitudId){
