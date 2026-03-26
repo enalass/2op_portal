@@ -58,7 +58,13 @@ $route['usuarios'] 			= 'cerbero';
 
 //URL Candidatos
 $route['dashboard'] 				= 'admin/cA001_panelControl';
-$route['panel']		 				= 'cliente/cC001_panelControl';
+$route['panel']		 				= 'cliente/CC001_panelControl';
+$route['panel/pago/iniciar']		= 'cliente/CC001_panelControl/iniciarPago';
+$route['panel/pago/notificar']	= 'cliente/CC001_panelControl/redsysNotify';
+$route['panel/pago/ok']			= 'cliente/CC001_panelControl/redsysReturnOk';
+$route['panel/pago/ko']			= 'cliente/CC001_panelControl/redsysReturnKo';
+$route['panel/datos/guardar']	= 'cliente/CC001_panelControl/guardarDatosCliente';
+$route['panel/estudio/subir']	= 'cliente/CC001_panelControl/subirEstudioCliente';
 $route['contacto/enviar']		    = 'publicController/enviarSolicitud';
 $route['gracias']		            = 'publicController/gracias';
 

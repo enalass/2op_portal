@@ -120,6 +120,11 @@ class Emailtemplate
         return $this->sendByType('solicitud_informacion', $to, $data, $options);
     }
 
+    public function sendEstudioSubidoAdmin($to, $data = array(), $options = array())
+    {
+        return $this->sendByType('estudio_subido_admin', $to, $data, $options);
+    }
+
     public function getLastError()
     {
         return $this->lastError;

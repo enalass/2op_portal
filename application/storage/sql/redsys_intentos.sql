@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `t_rpi_redsys_intentos` (
+  `RPI_CO_ID` int(11) NOT NULL AUTO_INCREMENT,
+  `SOL_CO_ID` int(11) DEFAULT NULL,
+  `USR_CO_ID` int(11) DEFAULT NULL,
+  `RPI_DS_CANAL` varchar(20) NOT NULL,
+  `RPI_DS_ESTADO` varchar(30) NOT NULL,
+  `RPI_DS_ORDER` varchar(20) DEFAULT NULL,
+  `RPI_DS_RESPONSE_CODE` varchar(8) DEFAULT NULL,
+  `RPI_DS_IP` varchar(45) DEFAULT NULL,
+  `RPI_TX_PAYLOAD` longtext,
+  `RPI_TX_RAW` longtext,
+  `RPI_DT_CREATE` datetime NOT NULL,
+  `RPI_BL_ENABLE` tinyint(4) NOT NULL DEFAULT '1',
+  `RPI_BL_DELETE` tinyint(4) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`RPI_CO_ID`),
+  KEY `idx_rpi_sol` (`SOL_CO_ID`),
+  KEY `idx_rpi_usr` (`USR_CO_ID`),
+  KEY `idx_rpi_order` (`RPI_DS_ORDER`),
+  KEY `idx_rpi_create` (`RPI_DT_CREATE`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

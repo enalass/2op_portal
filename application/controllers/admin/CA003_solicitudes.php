@@ -406,6 +406,10 @@ class CA003_solicitudes extends CI_Controller {
 			return;
 		}
 
+		if (!empty($userCreated['user_id']) && $this->hasSolicitudClientColumn()) {
+			$this->{self::$MODEL}->updateElement(array('USR_CO_ID' => (int)$userCreated['user_id']), $id);
+		}
+
 		$nombreIdioma = $this->getIdiomaNombreByIso($idiomaIso);
 		$payload = array(
 			'nombre' => $this->input->post('ele_name', TRUE),
@@ -627,7 +631,7 @@ class CA003_solicitudes extends CI_Controller {
 	private function ensureClientUserForPayment($email, $name){
 		$existingUser = $this->usersmodel->getUserByMail($email);
 		if ($existingUser !== false) {
-			return array('status' => 'success', 'created' => false);
+			return array('status' => 'success', 'created' => false, 'user_id' => (int)$existingUser->USR_CO_ID);
 		}
 
 		$passwordPlain = $this->generateTemporaryPassword();
@@ -664,7 +668,11 @@ class CA003_solicitudes extends CI_Controller {
 			return array('status' => 'unsuccess', 'msg' => 'Se creo el usuario pero no se pudo enviar el email de alta');
 		}
 
-		return array('status' => 'success', 'created' => true);
+		return array('status' => 'success', 'created' => true, 'user_id' => (int)$userId);
+	}
+
+	private function hasSolicitudClientColumn(){
+		return $this->db->field_exists('USR_CO_ID', 't_sol_solicitudes');
 	}
 
 	private function generateTemporaryPassword($length = 10){

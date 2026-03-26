@@ -456,7 +456,15 @@ $config['csrf_token_name'] = 'csrf_tok';
 $config['csrf_cookie_name'] = 'csrf_cook';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = TRUE;
-$config['csrf_exclude_uris'] = array('api/v1/pacs/report');
+$config['csrf_exclude_uris'] = array(
+	'api/v1/pacs/report',
+	'panel/pago/notificar',
+	'panel/pago/ok',
+	'panel/pago/ko',
+	'cliente/CC001_panelControl/redsysNotify',
+	'cliente/CC001_panelControl/redsysReturnOk',
+	'cliente/CC001_panelControl/redsysReturnKo'
+);
 
 /*
 |--------------------------------------------------------------------------

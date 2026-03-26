@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS `t_sar_solicitudarchivos` (
+  `SAR_CO_ID` int(11) NOT NULL AUTO_INCREMENT,
+  `SOL_CO_ID` int(11) NOT NULL,
+  `USR_CO_ID` int(11) NOT NULL,
+  `SAR_DS_NOMBRE_ORIGINAL` varchar(255) NOT NULL,
+  `SAR_DS_NOMBRE_GUARDADO` varchar(255) NOT NULL,
+  `SAR_DS_RUTA` varchar(500) NOT NULL,
+  `SAR_NM_TAM_BYTES` bigint(20) NOT NULL DEFAULT '0',
+  `SAR_DS_EXTENSION` varchar(10) NOT NULL,
+  `SAR_DT_CREATE` datetime NOT NULL,
+  `SAR_BL_ENABLE` tinyint(4) NOT NULL DEFAULT '1',
+  `SAR_BL_DELETE` tinyint(4) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`SAR_CO_ID`),
+  KEY `idx_sar_sol` (`SOL_CO_ID`),
+  KEY `idx_sar_usr` (`USR_CO_ID`),
+  KEY `idx_sar_create` (`SAR_DT_CREATE`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

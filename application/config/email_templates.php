@@ -26,5 +26,9 @@ $config['email_templates'] = array(
     'nuevo_leed_admin' => array(
         'subject' => 'Nuevo leed recibido #{lead_id} - {app_name}',
         'view' => 'nuevo_leed_admin'
+    ),
+    'estudio_subido_admin' => array(
+        'subject' => 'Estudio subido por cliente - solicitud {request_code}',
+        'view' => 'estudio_subido_admin'
     )
 );
