@@ -238,6 +238,8 @@ class CC001_panelControl extends CI_Controller {
 			return;
 		}
 
+		$this->applyLargeUploadRuntimeLimits();
+
 		if(!$this->Solicitudarchivosmodel->canUse()){
 			echo json_encode(array(
 				"status"=>"unsuccess",
@@ -306,15 +308,55 @@ class CC001_panelControl extends CI_Controller {
 			return;
 		}
 
-		$allowedExtensions = array('dcm', 'dicom', 'zip');
-		$maxBytes = 300 * 1024 * 1024;
+		$allowedExtensions = array('dcm', 'dicom', 'zip', 'pdf', 'jpg', 'png');
+		$maxBytes = 1024 * 1024 * 1024; // 1GB por archivo
+		$maxFiles = 1500;
+		$maxTotalBytes = (int)(1536 * 1024 * 1024); // 1.5GB total aprox
 		$uploaded = 0;
+		$uploadedItems = array();
 		$errors = array();
+		$totalIncomingBytes = 0;
 
 		$names = $_FILES['estudios']['name'];
 		$tmpNames = $_FILES['estudios']['tmp_name'];
 		$sizes = $_FILES['estudios']['size'];
 		$errorCodes = $_FILES['estudios']['error'];
+		$expectedBatchCount = (int)$this->input->post('expected_batch_count', TRUE);
+		$receivedBatchCount = is_array($names) ? count($names) : 0;
+
+		if($expectedBatchCount > 0 && $receivedBatchCount < $expectedBatchCount){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>'El servidor ha recibido menos archivos de los enviados en el lote (' . $receivedBatchCount . '/' . $expectedBatchCount . '). Ajusta max_file_uploads en PHP o reduce archivos por lote.',
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		if(count($names) > $maxFiles){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>'Has superado el maximo de archivos permitidos por envio (' . $maxFiles . ')',
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
+
+		foreach($sizes as $sizeCandidate){
+			$totalIncomingBytes += (int)$sizeCandidate;
+		}
+
+		if($totalIncomingBytes > $maxTotalBytes){
+			echo json_encode(array(
+				"status"=>"unsuccess",
+				"msg"=>'El tamano total del envio supera el maximo permitido (1.5GB)',
+				"hash"=> $this->security->get_csrf_hash(),
+				"token"=> $this->security->get_csrf_token_name()
+			));
+			return;
+		}
 
 		for($i = 0; $i < count($names); $i++){
 			$originalName = isset($names[$i]) ? (string)$names[$i] : '';
@@ -351,7 +393,7 @@ class CC001_panelControl extends CI_Controller {
 				continue;
 			}
 
-			$relativePath = 'uploadDocumentation/estudios/sol_' . $solicitudId . '/' . $storedName;
+			$relativePath = 'uploadDocumentation/' . $solicitudId . '/' . $storedName;
 			$insertData = array(
 				'SOL_CO_ID' => $solicitudId,
 				'USR_CO_ID' => $userId,
@@ -372,6 +414,12 @@ class CC001_panelControl extends CI_Controller {
 			}
 
 			$uploaded++;
+			$uploadedItems[] = array(
+				'nombre_original' => $safeOriginal,
+				'extension' => strtoupper($extension),
+				'tam_bytes' => (int)$size,
+				'fecha' => $this->formatDate(date('Y-m-d H:i:s')),
+			);
 		}
 
 		if($uploaded <= 0){
@@ -402,6 +450,8 @@ class CC001_panelControl extends CI_Controller {
 		echo json_encode(array(
 			"status"=>"success",
 			"msg"=>$msg,
+			"uploaded_count"=>$uploaded,
+			"uploaded_files"=>$uploadedItems,
 			"hash"=> $this->security->get_csrf_hash(),
 			"token"=> $this->security->get_csrf_token_name()
 		));
@@ -1074,7 +1124,7 @@ class CC001_panelControl extends CI_Controller {
 	}
 
 	private function getSolicitudUploadDirectory($solicitudId){
-		return rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'uploadDocumentation' . DIRECTORY_SEPARATOR . 'estudios' . DIRECTORY_SEPARATOR . 'sol_' . (int)$solicitudId;
+		return rtrim(FCPATH, '/\\') . DIRECTORY_SEPARATOR . 'uploadDocumentation' . DIRECTORY_SEPARATOR . (int)$solicitudId;
 	}
 
 	private function sanitizeUploadName($name){
@@ -1120,6 +1170,14 @@ class CC001_panelControl extends CI_Controller {
 		}
 
 		return (int)$result->num_rows();
+	}
+
+	private function applyLargeUploadRuntimeLimits(){
+		@ini_set('upload_max_filesize', '1024M');
+		@ini_set('post_max_size', '1600M');
+		@ini_set('max_file_uploads', '2000');
+		@ini_set('max_execution_time', '1800');
+		@ini_set('max_input_time', '1800');
 	}
 
 }
