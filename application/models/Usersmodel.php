@@ -128,6 +128,22 @@ class Usersmodel extends CI_Model {
 		return false;
 	}
 
+	function getUserByMailForRecover($mail){
+		$this->db->where('USR_DS_MAIL', $mail);
+		$this->db->where('USR_BL_ELIMINADO', '0');
+		$this->db->where('USR_BL_ACEPTADO', '1');
+		$this->db->where('USR_BL_DESHABILITADO', '0');
+		$data = $this->db->get('t_usr_usuarios');
+
+		if ($data->num_rows() > 0){
+			foreach ($data->result() as $row) {
+				return $row;
+			}
+		}
+
+		return false;
+	}
+
 	
 
 	

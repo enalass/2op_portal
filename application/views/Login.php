@@ -142,7 +142,8 @@
 								<p class="text-muted font-weight-bold">Introduce tu email para resetear la contraseña</p>
 							</div>
 							<!--begin::Form-->
-							<form class="form" novalidate="novalidate" id="kt_login_forgot_form">
+							<form class="form" novalidate="novalidate" id="kt_login_forgot_form" action="<?php echo base_url()?>index.php/cerbero/recuperarPassword">
+								<input type="hidden" name="<?=$csrf['name'];?>" value="<?=$csrf['hash'];?>" />
 								<div class="form-group">
 									<input class="form-control form-control-solid h-auto py-5 px-6" type="email" placeholder="Email" name="email" autocomplete="off" />
 								</div>

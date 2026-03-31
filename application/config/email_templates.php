@@ -30,5 +30,9 @@ $config['email_templates'] = array(
     'estudio_subido_admin' => array(
         'subject' => 'Estudio subido por cliente - solicitud {request_code}',
         'view' => 'estudio_subido_admin'
+    ),
+    'recuperacion_password' => array(
+        'subject' => 'Nueva contraseña de acceso - {app_name}',
+        'view' => 'recuperacion_password'
     )
 );

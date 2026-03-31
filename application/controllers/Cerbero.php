@@ -150,6 +150,123 @@ class Cerbero extends CI_Controller {
         redirect('');
 	}
 
+	public function recuperarPassword(){
+		$this->form_validation->set_rules('email', 'email', 'required|trim|valid_email|xss_clean');
+		$this->form_validation->set_message('required','Rellena el campo '. ' %s');
+
+		$resp = array(
+			"status"	=>"invalid",
+			"msg"		=>"No se ha podido procesar la solicitud.",
+			"hash"		=>$this->security->get_csrf_hash(),
+			"token"	=>$this->security->get_csrf_token_name()
+		);
+
+		if($this->form_validation->run()==FALSE){
+			$resp["msg"] = validation_errors();
+			echo json_encode($resp);
+			return;
+		}
+
+		$email = trim($this->input->post('email', TRUE));
+		$user = $this->usersmodel->getUserByMailForRecover($email);
+
+		if($user === FALSE){
+			$resp["status"] = "success";
+			$resp["msg"] = "Si el email existe en el sistema, recibirás una nueva contraseña.";
+			$resp["hash"] = $this->security->get_csrf_hash();
+			echo json_encode($resp);
+			return;
+		}
+
+		$newPassword = $this->generarPasswordTemporal(12);
+		$newPasswordHash = password_hash($newPassword, PASSWORD_DEFAULT);
+
+		if($newPasswordHash === FALSE){
+			$resp["msg"] = "No se ha podido generar una nueva contraseña.";
+			$resp["hash"] = $this->security->get_csrf_hash();
+			echo json_encode($resp);
+			return;
+		}
+
+		$this->db->trans_begin();
+
+		$this->usersmodel->updateUser($user->USR_CO_ID, array(
+			"USR_DS_PASSWORD" => $newPasswordHash,
+			"USR_NM_INTENTOSACCESO" => 0
+		));
+
+		if ($this->db->trans_status() === FALSE){
+			$this->db->trans_rollback();
+			$resp["msg"] = "No se ha podido actualizar la contraseña.";
+			$resp["hash"] = $this->security->get_csrf_hash();
+			echo json_encode($resp);
+			return;
+		}
+
+		$this->load->library('Emailtemplate');
+		$payload = array(
+			'nombre' => $user->USR_DS_NOMBRE,
+			'email' => $user->USR_DS_MAIL,
+			'password' => $newPassword,
+			'url_acceso' => rtrim(base_url(), '/').'/usuarios',
+			'app_name' => 'Segunda opinión radiológica'
+		);
+
+		$sent = $this->emailtemplate->sendRecuperacionPassword($user->USR_DS_MAIL, $payload, array(
+			'from_name' => 'Soporte Segunda opinión radiológica'
+		));
+
+		if(!$sent){
+			$this->db->trans_rollback();
+			$resp["msg"] = "No se ha podido enviar el email de recuperación.";
+			$resp["hash"] = $this->security->get_csrf_hash();
+			echo json_encode($resp);
+			return;
+		}
+
+		$this->db->trans_commit();
+
+		$resp["status"] = "success";
+		$resp["msg"] = "Hemos enviado una nueva contraseña a tu correo electrónico.";
+		$resp["hash"] = $this->security->get_csrf_hash();
+		echo json_encode($resp);
+	}
+
+	private function generarPasswordTemporal($length = 12)
+	{
+		$chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+		$maxIndex = strlen($chars) - 1;
+		$password = '';
+
+		for ($i = 0; $i < $length; $i++)
+		{
+			$index = $this->secureRandomInt(0, $maxIndex);
+			$password .= $chars[$index];
+		}
+
+		return $password;
+	}
+
+	private function secureRandomInt($min, $max)
+	{
+		if (function_exists('random_int'))
+		{
+			return random_int($min, $max);
+		}
+
+		$bytes = $this->security->get_random_bytes(4);
+		if ($bytes !== FALSE)
+		{
+			$value = unpack('N', $bytes);
+			if (is_array($value) && isset($value[1]))
+			{
+				return $min + ($value[1] % (($max - $min) + 1));
+			}
+		}
+
+		return mt_rand($min, $max);
+	}
+
 }
 
 /* End of file cerbero.php */

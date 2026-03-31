@@ -125,6 +125,11 @@ class Emailtemplate
         return $this->sendByType('estudio_subido_admin', $to, $data, $options);
     }
 
+    public function sendRecuperacionPassword($to, $data = array(), $options = array())
+    {
+        return $this->sendByType('recuperacion_password', $to, $data, $options);
+    }
+
     public function getLastError()
     {
         return $this->lastError;

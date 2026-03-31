@@ -260,8 +260,57 @@ var KTLogin = function() {
 
             validation.validate().then(function(status) {
 		        if (status == 'Valid') {
-                    // Submit form
-                    KTUtil.scrollTop();
+                    $.ajax({
+                        url: $('#kt_login_forgot_form').attr("action"),
+                        method: 'POST',
+                        dataType: 'json',
+                        data: $('#kt_login_forgot_form').serialize(),
+                        error: function()
+                        {
+                            swal.fire({
+                                text: "No se ha podido contactar con el servidor. Intentalo de nuevo.",
+                                icon: "error",
+                                buttonsStyling: false,
+                                confirmButtonText: "Aceptar",
+                                customClass: {
+                                    confirmButton: "btn font-weight-bold btn-light-primary"
+                                }
+                            });
+                        },
+                        success: function(response)
+                        {
+                            if (response && response.token && response.hash) {
+                                $("input[name='" + response.token + "']").val(response.hash);
+                            }
+
+                            if (response.status === 'success') {
+                                swal.fire({
+                                    text: response.msg,
+                                    icon: "success",
+                                    buttonsStyling: false,
+                                    confirmButtonText: "Aceptar",
+                                    customClass: {
+                                        confirmButton: "btn font-weight-bold btn-light-primary"
+                                    }
+                                }).then(function() {
+                                    _showForm('signin');
+                                    KTUtil.scrollTop();
+                                });
+                            } else {
+                                swal.fire({
+                                    text: response.msg,
+                                    icon: "error",
+                                    buttonsStyling: false,
+                                    confirmButtonText: "Aceptar",
+                                    customClass: {
+                                        confirmButton: "btn font-weight-bold btn-light-primary"
+                                    }
+                                }).then(function() {
+                                    KTUtil.scrollTop();
+                                });
+                            }
+                        }
+                    });
 				} else {
 					swal.fire({
 		                text: "Lo sentimos, parece que hay algún error, vuelve a intentarlo.",
