@@ -97,3 +97,13 @@ define('EMAIL_CONTACT', 'luisalbertonr@gmail.com');
 define('EMAIL_REPLY', 'luisalbertonr@gmail.com');
 define('EMAIL_ADMIN', USER_CONTACT); // Permite varios emails separados por coma o punto y coma.
 define('PASS_CONTACT', 'ortq kgie tkqd tdmu');
+
+/*
+|--------------------------------------------------------------------------
+| PACS DICOM (DCMTK)
+|--------------------------------------------------------------------------
+*/
+define('PACS_HOST', 'segundaopinionradiologica.actualpacs.com');
+define('PACS_PORT', 5419);
+define('PACS_CALLED_AET', 'SEGUNDAOPINION');
+define('PACS_CALLING_AET', '');

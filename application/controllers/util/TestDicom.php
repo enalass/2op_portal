@@ -32,12 +32,17 @@ class TestDicom extends CI_Controller
     {
         $this->load->library('dicom');
 
+        $host = defined('PACS_HOST') ? (string)PACS_HOST : 'segundaopinionradiologica.actualpacs.com';
+        $port = defined('PACS_PORT') ? (int)PACS_PORT : 5419;
+        $calledAet = defined('PACS_CALLED_AET') ? (string)PACS_CALLED_AET : 'SEGUNDAOPINION';
+        $callingAet = defined('PACS_CALLING_AET') ? (string)PACS_CALLING_AET : '';
+
         $result = $this->dicom->sendToPacs(
-            'segundaopinionradiologica.actualpacs.com',
-            5419,
+            $host,
+            $port,
             '/var/www/vhosts/desarrolloinformatico.com/2op.desarrolloinformatico.com/dcmtest/out_test_dicom',
-            'SEGUNDAOPINION',
-            '',
+            $calledAet,
+            $callingAet,
             array('-v')
         );
 
