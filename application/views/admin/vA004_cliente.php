@@ -223,7 +223,7 @@
                 method: 'GET',
               },
             },
-            pageSize: 10,
+            pageSize: 5,
             serverPaging: false,
             serverFiltering: false,
             serverSorting: false,
@@ -268,7 +268,8 @@
             overflow: 'visible',
             autoHide: false,
             template: function(row) {
-              return '<a href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2 buttonEditCliente" title="Editar cliente" idclass="' + row.RecordID + '"><i class="la la-edit"></i></a>' +
+              return '<a href="<?php echo base_url(); ?>index.php/admin/cA004_cliente/ficha/' + row.RecordID + '" class="btn btn-sm btn-clean btn-icon mr-2" title="Ver ficha cliente"><i class="la la-eye"></i></a>' +
+                '<a href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2 buttonEditCliente" title="Editar cliente" idclass="' + row.RecordID + '"><i class="la la-edit"></i></a>' +
                 '<a href="javascript:;" class="btn btn-sm btn-clean btn-icon buttonDeleteCliente" title="Borrar cliente" idclass="' + row.RecordID + '"><i class="la la-trash"></i></a>';
             },
           }],

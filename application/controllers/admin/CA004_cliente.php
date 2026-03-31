@@ -8,6 +8,7 @@ class CA004_cliente extends CI_Controller {
 
 		$this->load->model('clientesmodel');
 		$this->load->model('solicitudmodel');
+		$this->load->model('pagosmodel');
 	}
 
 	public function index()
@@ -45,6 +46,99 @@ class CA004_cliente extends CI_Controller {
 			}
 		}
 		echo json_encode( array("meta"=>array("field"=>"RecordID"),"data"=>$data) );
+	}
+
+	public function ficha($id_usuario=0)
+	{
+		if($this->session->userdata('logged')!=TRUE || ($this->session->userdata('acceso')) < 100){
+			redirect('index.php/cerbero','refresh');
+			return;
+		}
+
+		$idUsuario = (int)$id_usuario;
+		$userResult = $this->clientesmodel->getClienteByCodUser($idUsuario);
+		if($userResult === false){
+			show_404();
+			return;
+		}
+
+		$cliente = null;
+		foreach($userResult->result() as $row){
+			$cliente = $row;
+			break;
+		}
+
+		if($cliente === null){
+			show_404();
+			return;
+		}
+
+		$estudios = array();
+		if($this->solicitudmodel->hasSolicitudUserColumn()){
+			$solicitudesResult = $this->solicitudmodel->getClientVisibleSolicitudes($idUsuario, 0);
+			if($solicitudesResult !== false){
+				foreach($solicitudesResult->result() as $sol){
+					$estudios[] = array(
+						'solicitud_id' => (int)$sol->SOL_CO_ID,
+						'codigo_solicitud' => $this->composeSolicitudCode($idUsuario, (int)$sol->SOL_CO_ID),
+						'nombre' => (string)$sol->SOL_DS_NOMBRE,
+						'estado' => isset($sol->ESO_DS_NAME) ? (string)$sol->ESO_DS_NAME : '-',
+						'fecha' => $this->formatDate($sol->SOL_DT_CREATE)
+					);
+				}
+			}
+		}
+
+		$pagos = array();
+		$pagosResult = $this->pagosmodel->getListByUserId($idUsuario);
+		if($pagosResult !== false){
+			foreach($pagosResult->result() as $pago){
+				$solId = (int)$pago->SOL_CO_ID;
+				$pagos[] = array(
+					'pago_id' => (int)$pago->RPI_CO_ID,
+					'codigo_solicitud' => $solId > 0 ? $this->composeSolicitudCode($idUsuario, $solId) : '-',
+					'codigo_redsys' => !empty($pago->RPI_DS_ORDER) ? (string)$pago->RPI_DS_ORDER : '-',
+					'estado_pago' => !empty($pago->RPI_DS_ESTADO) ? (string)$pago->RPI_DS_ESTADO : '-',
+					'canal' => !empty($pago->RPI_DS_CANAL) ? (string)$pago->RPI_DS_CANAL : '-',
+					'respuesta' => !empty($pago->RPI_DS_RESPONSE_CODE) ? (string)$pago->RPI_DS_RESPONSE_CODE : '-',
+					'fecha' => $this->formatDate($pago->RPI_DT_CREATE)
+				);
+			}
+		}
+
+		$estudiosPage = (int)$this->input->get('est_page');
+		$pagosPage = (int)$this->input->get('pay_page');
+		$estudiosPagination = $this->paginateArray($estudios, 5, $estudiosPage);
+		$pagosPagination = $this->paginateArray($pagos, 5, $pagosPage);
+		$partial = (string)$this->input->get('partial', TRUE);
+
+		$viewData = array(
+			"clienteId" => $idUsuario,
+			"estudios" => $estudiosPagination,
+			"pagos" => $pagosPagination
+		);
+
+		if($partial === 'estudios'){
+			$this->load->view('admin/partials/vA004_cliente_ficha_estudios.php', $viewData);
+			return;
+		}
+
+		if($partial === 'pagos'){
+			$this->load->view('admin/partials/vA004_cliente_ficha_pagos.php', $viewData);
+			return;
+		}
+
+		$data = array(
+			"content" => "admin/vA004_cliente_ficha.php",
+			"titulo" => "Ficha de cliente",
+			"javascriptMenu" => "$('#menuClientes').addClass('menu-item-active');",
+			"cliente" => $cliente,
+			"clienteId" => $idUsuario,
+			"estudios" => $estudiosPagination,
+			"pagos" => $pagosPagination
+		);
+
+		$this->load->view('layout_admin',$data);
 	}
 
 	public function nuevoCliente(){
@@ -280,6 +374,56 @@ class CA004_cliente extends CI_Controller {
 		$html .= "</div></div>";
 
 		return $html;
+	}
+
+	private function formatDate($rawDate)
+	{
+		if(empty($rawDate)){
+			return '-';
+		}
+
+		$ts = strtotime((string)$rawDate);
+		if($ts === false){
+			return '-';
+		}
+
+		return date('d-m-Y H:i', $ts);
+	}
+
+	private function composeSolicitudCode($clientId, $solicitudId)
+	{
+		$clientPart = str_pad((string)((int)$clientId), 4, '0', STR_PAD_LEFT);
+		$solicitudPart = str_pad((string)((int)$solicitudId), 5, '0', STR_PAD_LEFT);
+
+		return '2OP-' . $clientPart . $solicitudPart;
+	}
+
+	private function paginateArray($items, $perPage, $currentPage)
+	{
+		$totalItems = count($items);
+		$totalPages = (int) ceil($totalItems / $perPage);
+		if($totalPages < 1){
+			$totalPages = 1;
+		}
+
+		$page = (int)$currentPage;
+		if($page < 1){
+			$page = 1;
+		}
+		if($page > $totalPages){
+			$page = $totalPages;
+		}
+
+		$offset = ($page - 1) * $perPage;
+		$pagedItems = array_slice($items, $offset, $perPage);
+
+		return array(
+			'items' => $pagedItems,
+			'page' => $page,
+			'perPage' => $perPage,
+			'totalItems' => $totalItems,
+			'totalPages' => $totalPages
+		);
 	}
 }
 
