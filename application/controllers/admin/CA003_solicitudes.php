@@ -16,16 +16,29 @@ class CA003_solicitudes extends CI_Controller {
 		parent::__construct();
 		$this->load->model(self::$MODEL);
 		$this->load->model('usersmodel');
+		$this->load->model('Solicitudarchivosmodel');
 	}
 
 	public function index()
 	{
 		if(($this->session->userdata('logged'))==TRUE && ($this->session->userdata('acceso'))>=100){
+			$estadosSolicitud = array();
+			$estados = $this->{self::$MODEL}->getEstadosSolicitudActivos();
+			if($estados !== false){
+				foreach($estados->result() as $estado){
+					$estadosSolicitud[] = array(
+						'id' => (int)$estado->ESO_CO_ID,
+						'name' => (string)$estado->ESO_DS_NAME,
+					);
+				}
+			}
+
 			$data = array(
 				"content"				=> "admin/vA003_solicitudes.php"
 				,"titulo" 				=> self::$COMPANY
 				,"controller" 			=> self::$NAME
 				,"javascriptMenu"		=>"$('#menuSolicitud').addClass('menu-item-active');"
+				,"estadosSolicitud" => $estadosSolicitud
 				
 			);
 			$this->load->view('layout_admin',$data);
@@ -45,6 +58,18 @@ class CA003_solicitudes extends CI_Controller {
 		$elements = $this->{self::$MODEL}->getElementsList();
 		if($elements != false){
 			foreach ($elements->result() as $element) {
+				$estadoId = (int)$element->ESO_CO_ID;
+				$stateBucket = 'otro';
+				if($estadoId === 1){
+					$stateBucket = 'lead';
+				}else if($estadoId === 2){
+					$stateBucket = 'solicitado';
+				}else if($estadoId === 6){
+					$stateBucket = 'estudio_subido';
+				}else if($estadoId === 8){
+					$stateBucket = 'finalizado';
+				}
+
 				$fechaSolicitud = '';
 				if (!empty($element->SOL_DT_CREATE)) {
 					$timestamp = strtotime($element->SOL_DT_CREATE);
@@ -53,6 +78,8 @@ class CA003_solicitudes extends CI_Controller {
 
 				$data[] = array(
 								"RecordID"			=>intval($element->{self::$CODE_DB})
+							,"StateId"			=>(int)$element->ESO_CO_ID
+							,"StateBucket"		=>$stateBucket
 								,"Name"				=>$element->{self::$NAME_DB}
 								,"State"			=>$element->ESO_DS_NAME
 								,"Origin"			=>$element->FSO_DS_NAME
@@ -524,6 +551,7 @@ class CA003_solicitudes extends CI_Controller {
 			'@FIELD_SOLICITAR_PAGO' => ($action === 'edit')
 				? '<button type="button" class="btn btn-warning" id="buttonSolicitarPago">Solicitar pago</button>'
 				: '',
+			'@FIELD_DICOM_SECTION' => $this->buildDicomSectionHtml($cat, $action),
 			'@FIELD_NOTAS' => form_textarea(array('name'=>'ele_notas', 'id'=>'ele_notas','class'=>$input_class,'rows'=>4,'placeholder'=>'Notas internas', 'value'=>$get_value(self::$PREFIX . '_DS_NOTAS'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_SOLICITANTE_TIPO' => form_dropdown('ele_solicitante_tipo', $solicitante_options, $get_value(self::$PREFIX . '_DS_SOLICITANTE_TIPO', 'PACIENTE'), 'id="ele_solicitante_tipo" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_PAC_NOMBRE' => form_input(array('name'=>'ele_pac_nombre', 'id'=>'ele_pac_nombre','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$PREFIX . '_DS_PAC_NOMBRE'), 'disabled'=>$disabled ? 'disabled' : null)),
@@ -566,6 +594,130 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		return $field_map;
+	}
+
+	private function buildDicomSectionHtml($cat, $action){
+		if($action !== 'edit' || !is_object($cat)){
+			return '';
+		}
+
+		$estadoId = isset($cat->ESO_CO_ID) ? (int)$cat->ESO_CO_ID : 0;
+		if($estadoId < 5){
+			return '';
+		}
+
+		$solicitudId = isset($cat->{self::$CODE_DB}) ? (int)$cat->{self::$CODE_DB} : 0;
+		$files = array();
+
+		if($solicitudId > 0 && $this->Solicitudarchivosmodel->canUse()){
+			$result = $this->Solicitudarchivosmodel->getArchivosBySolicitud($solicitudId);
+			if($result !== false){
+				foreach($result->result() as $row){
+					$files[] = array(
+						'name' => isset($row->SAR_DS_NOMBRE_ORIGINAL) ? (string)$row->SAR_DS_NOMBRE_ORIGINAL : 'Sin nombre',
+						'extension' => isset($row->SAR_DS_EXTENSION) ? strtoupper((string)$row->SAR_DS_EXTENSION) : '-',
+						'size' => $this->formatBytesLabel(isset($row->SAR_NM_TAM_BYTES) ? (float)$row->SAR_NM_TAM_BYTES : 0),
+						'date' => $this->formatDateTimeLabel(isset($row->SAR_DT_CREATE) ? $row->SAR_DT_CREATE : ''),
+					);
+				}
+			}
+		}
+
+		$sectionId = 'dicomSection_' . $solicitudId;
+		$listId = 'dicomFileList_' . $solicitudId;
+		$prevId = 'dicomPrev_' . $solicitudId;
+		$nextId = 'dicomNext_' . $solicitudId;
+		$infoId = 'dicomPageInfo_' . $solicitudId;
+		$buttonId = 'buttonProcesarDicom_' . $solicitudId;
+
+		$html = '';
+		$html .= '<hr>';
+		$html .= '<h5 class="mb-4">Archivos DICOM</h5>';
+		$html .= '<div class="row" id="' . $sectionId . '">';
+		$html .= '<div class="col-md-6">';
+		$html .= '<div class="border rounded p-3 h-100">';
+		$html .= '<div class="d-flex align-items-center justify-content-between mb-3">';
+		$html .= '<strong>Ficheros subidos</strong>';
+		$html .= '<span class="badge badge-light-primary">Total: ' . count($files) . '</span>';
+		$html .= '</div>';
+
+		if(empty($files)){
+			$html .= '<div class="text-muted">Todavia no hay ficheros subidos.</div>';
+		}else{
+			$html .= '<ul class="list-group" id="' . $listId . '">';
+			foreach($files as $index => $file){
+				$html .= '<li class="list-group-item py-2 dicom-file-item" data-item-index="' . $index . '">';
+				$html .= '<div class="font-weight-bold text-truncate" title="' . html_escape($file['name']) . '">' . html_escape($file['name']) . '</div>';
+				$html .= '<div class="small text-muted">' . html_escape($file['date']) . ' | ' . html_escape($file['extension']) . ' | ' . html_escape($file['size']) . '</div>';
+				$html .= '</li>';
+			}
+			$html .= '</ul>';
+			$html .= '<div class="d-flex align-items-center justify-content-between mt-3">';
+			$html .= '<button type="button" class="btn btn-sm btn-light-primary" id="' . $prevId . '">Anterior</button>';
+			$html .= '<span class="small text-muted" id="' . $infoId . '"></span>';
+			$html .= '<button type="button" class="btn btn-sm btn-light-primary" id="' . $nextId . '">Siguiente</button>';
+			$html .= '</div>';
+		}
+
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '<div class="col-md-6 mt-4 mt-md-0">';
+		$html .= '<div class="border rounded p-3 h-100 d-flex flex-column justify-content-center align-items-center text-center">';
+		$html .= '<p class="text-muted mb-3">Proceso manual para subir y procesar archivos DICOM.</p>';
+		$html .= '<button type="button" class="btn btn-primary" id="' . $buttonId . '">Ejecutar proceso subir archivos DICOM</button>';
+		$html .= '<small class="text-muted mt-3 d-block">Esta accion se implementara en el siguiente paso.</small>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+
+		$html .= '<script>';
+		$html .= '(function(){';
+		$html .= 'var sectionId = "' . $sectionId . '";';
+		$html .= 'var listId = "' . $listId . '";';
+		$html .= 'var prevId = "' . $prevId . '";';
+		$html .= 'var nextId = "' . $nextId . '";';
+		$html .= 'var infoId = "' . $infoId . '";';
+		$html .= 'var buttonId = "' . $buttonId . '";';
+		$html .= 'var pageSize = 5;';
+		$html .= 'var page = 1;';
+		$html .= 'var $section = jQuery("#" + sectionId);';
+		$html .= 'if($section.length === 0){ return; }';
+		$html .= 'var $items = jQuery("#" + listId + " .dicom-file-item");';
+		$html .= 'var totalItems = $items.length;';
+		$html .= 'var totalPages = Math.max(1, Math.ceil(totalItems / pageSize));';
+		$html .= 'function renderPage(){';
+		$html .= 'if(totalItems === 0){ return; }';
+		$html .= 'if(page < 1){ page = 1; }';
+		$html .= 'if(page > totalPages){ page = totalPages; }';
+		$html .= 'var start = (page - 1) * pageSize;';
+		$html .= 'var end = start + pageSize;';
+		$html .= '$items.hide().slice(start, end).show();';
+		$html .= 'jQuery("#" + infoId).text("Pagina " + page + " de " + totalPages);';
+		$html .= 'jQuery("#" + prevId).prop("disabled", page <= 1);';
+		$html .= 'jQuery("#" + nextId).prop("disabled", page >= totalPages);';
+		$html .= '}';
+		$html .= 'jQuery(document).off("click.dicomPrev_" + sectionId, "#" + prevId).on("click.dicomPrev_" + sectionId, "#" + prevId, function(e){ e.preventDefault(); page--; renderPage(); });';
+		$html .= 'jQuery(document).off("click.dicomNext_" + sectionId, "#" + nextId).on("click.dicomNext_" + sectionId, "#" + nextId, function(e){ e.preventDefault(); page++; renderPage(); });';
+		$html .= 'jQuery(document).off("click.dicomProcess_" + sectionId, "#" + buttonId).on("click.dicomProcess_" + sectionId, "#" + buttonId, function(e){ e.preventDefault(); window.alert("Proceso DICOM pendiente de implementar."); });';
+		$html .= 'renderPage();';
+		$html .= '})();';
+		$html .= '</script>';
+
+		return $html;
+	}
+
+	private function formatBytesLabel($bytes){
+		$bytes = (float)$bytes;
+		if($bytes <= 0){
+			return '0 B';
+		}
+
+		$units = array('B', 'KB', 'MB', 'GB', 'TB');
+		$pow = (int)floor(log($bytes, 1024));
+		$pow = max(0, min($pow, count($units) - 1));
+		$value = $bytes / pow(1024, $pow);
+
+		return number_format($value, 2, ',', '.') . ' ' . $units[$pow];
 	}
 
 	private function normalizeImporteForValidation($value){

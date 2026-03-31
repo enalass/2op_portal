@@ -271,6 +271,8 @@
 			</div>
 		</div>
 
+		@FIELD_DICOM_SECTION
+
 		<hr>
 		<h5 class="mb-4">Gestión interna</h5>
 		<div class="form-group">

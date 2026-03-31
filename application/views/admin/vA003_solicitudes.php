@@ -1,6 +1,7 @@
 <?PHP
   if(($this->session->userdata('logged'))==TRUE) {
     if(($this->session->userdata('acceso'))>=100){
+		$estadoPrefiltro = (string)$this->input->get('estado', TRUE);
 ?>
   <!--begin::Container-->
   <div class="container" style="padding: 0px 5px;">
@@ -42,6 +43,16 @@
                     <span>
                       <i class="flaticon2-search-1 text-muted"></i>
                     </span>
+                  </div>
+                </div>
+
+                <div class="col-md-8 my-2 my-md-0">
+                  <div id="estadoFilters" class="d-flex flex-wrap">
+                    <button type="button" class="btn btn-sm btn-light-primary mr-2 mb-2 buttonEstadoFilter active" data-state-bucket="">Ver todas</button>
+                    <button type="button" class="btn btn-sm btn-primary mr-2 mb-2 buttonEstadoFilter" data-state-bucket="lead">Leed</button>
+                    <button type="button" class="btn btn-sm btn-warning mr-2 mb-2 buttonEstadoFilter" data-state-bucket="solicitado">Solicitado pago</button>
+                    <button type="button" class="btn btn-sm btn-success mr-2 mb-2 buttonEstadoFilter" data-state-bucket="estudio_subido">Estudio subido</button>
+                    <button type="button" class="btn btn-sm btn-danger mr-2 mb-2 buttonEstadoFilter" data-state-bucket="finalizado">Finalizado</button>
                   </div>
                 </div>
 
@@ -231,11 +242,25 @@
     var KTDatatableRemoteAjax = function() {
         // Private functions
 
+        var datatable = null;
+
+        var setActiveStateButton = function($button){
+          jQuery('.buttonEstadoFilter').removeClass('active font-weight-bolder');
+          $button.addClass('active font-weight-bolder');
+        };
+
+        var applyStateFilter = function(bucket){
+          if(!datatable){
+            return;
+          }
+          datatable.search(bucket, 'StateBucket');
+        };
+
         
 
         var launch = function() {
 
-            var datatable = $('#kt_datatable').KTDatatable({
+          datatable = $('#kt_datatable').KTDatatable({
                 // datasource definition
                 data: {
                     type: 'remote',
@@ -368,14 +393,36 @@
 
             });
 
-            $('#filtro_dep').on('change', function() {
-              var depFilter = [];
-              $.each($(this).select2('data'), function(){
-                  depFilter.push($(this)[0].text);
-              });
-              console.log(depFilter);
-              datatable.search(depFilter,"Department");
-            });
+			var estadoPrefiltro = '<?php echo addslashes($estadoPrefiltro); ?>';
+      var bucketPrefiltro = '';
+      if(estadoPrefiltro === '1'){
+        bucketPrefiltro = 'lead';
+      }else if(estadoPrefiltro === '2'){
+        bucketPrefiltro = 'solicitado';
+      }else if(estadoPrefiltro === '6'){
+        bucketPrefiltro = 'estudio_subido';
+      }else if(estadoPrefiltro === '8'){
+        bucketPrefiltro = 'finalizado';
+      }
+      if(bucketPrefiltro !== ''){
+        var $prefButton = jQuery('.buttonEstadoFilter[data-state-bucket="' + bucketPrefiltro + '"]');
+        if($prefButton.length){
+          setActiveStateButton($prefButton);
+        }
+        applyStateFilter(bucketPrefiltro);
+      } else {
+        applyStateFilter('');
+      }
+
+      jQuery(document).off('click.estadoFilter').on('click.estadoFilter', '.buttonEstadoFilter', function(e){
+        e.preventDefault();
+        var bucket = jQuery(this).attr('data-state-bucket');
+        if(typeof bucket === 'undefined'){
+          bucket = '';
+        }
+        setActiveStateButton(jQuery(this));
+        applyStateFilter(bucket);
+      });
         
         };
 
