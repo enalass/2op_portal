@@ -212,7 +212,7 @@
 
 								
 
-								<li class="menu-item menu-item-submenu" aria-haspopup="true" id="menuConfig" data-menu-toggle="hover">
+								<li class="menu-item menu-item-submenu" aria-haspopup="true" id="menuConfig" data-menu-toggle="hover" style="display:none;">
 									
 									<a href="javascript:;" class="menu-link menu-toggle">
 										
@@ -250,7 +250,7 @@
 									</div>	
 								</li>
 
-								<li class="menu-item" aria-haspopup="true" id="menuPerfil">
+								<li class="menu-item" aria-haspopup="true" id="menuPerfil" style="display:none;">
 									<a href="<?php echo base_url(); ?>index.php/admin/cA002_users/cambiarPerfil" class="menu-link">
 										<span class="svg-icon menu-icon">
 											<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">
