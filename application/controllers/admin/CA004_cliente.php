@@ -265,13 +265,12 @@ class CA004_cliente extends CI_Controller {
 					$fecha = $timestamp ? date('d-m-Y H:i', $timestamp) : '-';
 				}
 
-				$urlSolicitud = base_url() . "index.php/admin/cA003_solicitudes/editElement/" . (int)$solicitud->SOL_CO_ID;
 				$html .= "<tr>";
 				$html .= "<td>#" . (int)$solicitud->SOL_CO_ID . "</td>";
 				$html .= "<td>" . html_escape($nombre) . "</td>";
 				$html .= "<td>" . html_escape($estado) . "</td>";
 				$html .= "<td>" . html_escape($fecha) . "</td>";
-				$html .= "<td class='text-right'><a class='btn btn-sm btn-light-primary' href='" . html_escape($urlSolicitud) . "' target='_blank'>Abrir</a></td>";
+				$html .= "<td class='text-right'><a href='javascript:;' class='btn btn-sm btn-light-primary buttonOpenSolicitud' data-sol-id='" . (int)$solicitud->SOL_CO_ID . "'>Abrir</a></td>";
 				$html .= "</tr>";
 			}
 
