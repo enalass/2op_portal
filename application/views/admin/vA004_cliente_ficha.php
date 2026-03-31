@@ -79,7 +79,7 @@ $pagos = isset($pagos) && is_array($pagos) ? $pagos : array('items'=>array(),'pa
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="solicitudFichaModalLabel">Solicitud</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
                     <i aria-hidden="true" class="ki ki-close"></i>
                 </button>
             </div>
