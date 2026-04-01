@@ -145,6 +145,27 @@ class Solicitudarchivosmodel extends CI_Model {
 		return $query->row();
 	}
 
+	public function getArchivoById($archivoId, $solicitudId = 0){
+		if(!$this->canUse()){
+			return false;
+		}
+
+		$this->db->from(self::$TABLE);
+		$this->db->where(self::$PK, (int)$archivoId);
+		$this->db->where('SAR_BL_DELETE', 0);
+		if((int)$solicitudId > 0){
+			$this->db->where('SOL_CO_ID', (int)$solicitudId);
+		}
+		$this->db->limit(1);
+
+		$query = $this->db->get();
+		if($query->num_rows() <= 0){
+			return false;
+		}
+
+		return $query->row();
+	}
+
 	public function markArchivoProcessing($archivoId){
 		if(!$this->canUse()){
 			return false;

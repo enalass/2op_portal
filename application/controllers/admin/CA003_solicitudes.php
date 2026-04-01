@@ -225,6 +225,42 @@ class CA003_solicitudes extends CI_Controller {
 		echo $formulario;
 	}
 
+	public function viewElement($id=0){
+		if($this->session->userdata('logged')!=TRUE || $id==0 || ($this->session->userdata('acceso'))<100){
+			redirect('index.php/cerbero','refresh');
+			return;
+		}
+
+		$cat = $this->{self::$MODEL}->getElementById($id);
+		if($cat === false){
+			redirect('index.php/admin/' . self::$NAME,'refresh');
+			return;
+		}
+
+		$nombreFichero= FCPATH . "application/views/admin/" . self::$FORM . ".php";
+		$fichero = fopen($nombreFichero,"r");
+		$contenido = fread($fichero,filesize($nombreFichero));
+		fclose($fichero);
+
+		$field_map = $this->buildSolicitudFormFields($cat, false, 'edit');
+		$contenido = str_replace(array_keys($field_map), array_values($field_map), $contenido);
+
+		$formulario = form_open(base_url()."index.php/admin/" . self::$NAME . "/updateElement",array("id"=>"formModalElement"));
+		$formulario .= $contenido;
+		$formulario .= form_close();
+
+		$data = array(
+			"content" => "admin/vA003_solicitudes_view.php",
+			"titulo" => self::$COMPANY,
+			"controller" => self::$NAME,
+			"javascriptMenu" => "$('#menuSolicitud').addClass('menu-item-active');",
+			"solicitudId" => (int)$id,
+			"formSolicitud" => $formulario,
+		);
+
+		$this->load->view('layout_admin',$data);
+	}
+
 	public function updateElement(){
 		if($this->session->userdata('logged')!=TRUE || ($this->session->userdata('acceso'))<100){
 			echo "";
@@ -619,6 +655,335 @@ class CA003_solicitudes extends CI_Controller {
 		);
 	}
 
+	public function get_dicom_file_detail(){
+		@header('Content-Type: application/json; charset=utf-8');
+		@ob_end_clean();
+		$maxPreviewBytes = 10 * 1024 * 1024;
+		$logPath = '';
+		
+		if($this->session->userdata('logged')!=TRUE || ($this->session->userdata('acceso'))<100){
+			$this->outputJsonAndExit(array('status' => 'unsuccess', 'msg' => 'No autorizado'), $logPath);
+		}
+
+		$solicitudId = (int)$this->input->post('ele_id', TRUE);
+		$archivoId = (int)$this->input->post('archivo_id', TRUE);
+
+		if($solicitudId <= 0 || $archivoId <= 0){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'Parametros invalidos',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		if(!$this->Solicitudarchivosmodel->canUse()){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'Tabla de archivos no disponible',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$archivo = $this->Solicitudarchivosmodel->getArchivoById($archivoId, $solicitudId);
+		if($archivo === false){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'Archivo no encontrado',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$relativePath = isset($archivo->SAR_DS_RUTA) ? (string)$archivo->SAR_DS_RUTA : '';
+		$absolutePath = $this->resolveAbsolutePath($relativePath);
+		if($absolutePath === '' || !file_exists($absolutePath)){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'Fichero no existe en disco',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$fileSize = @filesize($absolutePath);
+		if($fileSize !== false && (int)$fileSize > $maxPreviewBytes){
+			$this->load->library('Dicom');
+			$metadataResult = $this->dicom->getBasicMetadata($absolutePath);
+			$this->outputJsonAndExit(array(
+				'status' => 'success',
+				'msg' => 'Detalle obtenido correctamente',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+				'file_id' => $archivoId,
+				'file_name' => isset($archivo->SAR_DS_NOMBRE_ORIGINAL) ? (string)$archivo->SAR_DS_NOMBRE_ORIGINAL : ('Archivo #' . $archivoId),
+				'metadata' => ($metadataResult['success'] && isset($metadataResult['metadata'])) ? $metadataResult['metadata'] : array(),
+				'preview_data_uri' => '',
+				'preview_disabled_reason' => 'Preview no disponible para ficheros mayores de 10MB',
+			), $logPath);
+		}
+
+		$this->load->library('Dicom');
+		if(!$this->dicom->isDicom($absolutePath)){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'No es un fichero DICOM valido: ' . $this->dicom->getLastError(),
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$metadataResult = $this->dicom->getBasicMetadata($absolutePath);
+		if(!$metadataResult['success']){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'No se pudieron leer metadatos: ' . (isset($metadataResult['error']) ? $metadataResult['error'] : 'Error desconocido'),
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$tmpBase = tempnam(sys_get_temp_dir(), 'dicom_preview_');
+		if($tmpBase === false){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'No se pudo crear archivo temporal',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$previewFile = $tmpBase . '.png';
+		@unlink($tmpBase);
+
+		$previewResult = $this->dicom->createPreview($absolutePath, $previewFile, 'png');
+		if(!$previewResult['success']){
+			@unlink($previewFile);
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'No se pudo generar preview: ' . (isset($previewResult['error']) ? $previewResult['error'] : 'Error desconocido'),
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$imageRaw = @file_get_contents($previewFile);
+		@unlink($previewFile);
+
+		if($imageRaw === false || $imageRaw === ''){
+			$this->outputJsonAndExit(array(
+				'status' => 'unsuccess',
+				'msg' => 'No se pudo leer la imagen generada',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			), $logPath);
+		}
+
+		$previewMime = $this->detectPreviewMime($imageRaw);
+		if(($previewMime === 'image/x-portable-graymap' || $previewMime === 'image/x-portable-pixmap') && function_exists('imagecreatetruecolor')){
+			$pngConverted = $this->convertPnmRawToPng($imageRaw);
+			if($pngConverted !== false && $pngConverted !== ''){
+				$imageRaw = $pngConverted;
+				$previewMime = 'image/png';
+			}
+		}
+
+		$response = array(
+			'status' => 'success',
+			'msg' => 'Detalle obtenido correctamente',
+			'hash' => $this->security->get_csrf_hash(),
+			'token' => $this->security->get_csrf_token_name(),
+			'file_id' => $archivoId,
+			'file_name' => isset($archivo->SAR_DS_NOMBRE_ORIGINAL) ? (string)$archivo->SAR_DS_NOMBRE_ORIGINAL : ('Archivo #' . $archivoId),
+			'metadata' => isset($metadataResult['metadata']) ? $metadataResult['metadata'] : array(),
+			'preview_data_uri' => 'data:' . $previewMime . ';base64,' . base64_encode($imageRaw),
+		);
+
+		$this->outputJsonAndExit($response, $logPath);
+	}
+
+	private function outputJsonAndExit($payload, $logPath = ''){
+		$json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if($json === false){
+			if($logPath !== ''){
+				file_put_contents($logPath, 'JSON encode error (1): ' . json_last_error_msg() . "\n", FILE_APPEND);
+			}
+
+			$payload = $this->sanitizeUtf8Recursive($payload);
+			$json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		}
+
+		if($json === false){
+			if($logPath !== ''){
+				file_put_contents($logPath, 'JSON encode error (2): ' . json_last_error_msg() . "\n", FILE_APPEND);
+			}
+			$json = '{"status":"unsuccess","msg":"Error serializando respuesta JSON"}';
+		}
+
+		die($json);
+	}
+
+	private function sanitizeUtf8Recursive($value){
+		if(is_array($value)){
+			foreach($value as $k => $v){
+				$value[$k] = $this->sanitizeUtf8Recursive($v);
+			}
+			return $value;
+		}
+
+		if(is_object($value)){
+			foreach($value as $k => $v){
+				$value->{$k} = $this->sanitizeUtf8Recursive($v);
+			}
+			return $value;
+		}
+
+		if(is_string($value)){
+			if(@preg_match('//u', $value)){
+				return $value;
+			}
+
+			if(function_exists('mb_convert_encoding')){
+				$converted = @mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+				if($converted !== false && @preg_match('//u', $converted)){
+					return $converted;
+				}
+			}
+
+			if(function_exists('iconv')){
+				$converted = @iconv('UTF-8', 'UTF-8//IGNORE', $value);
+				if($converted !== false){
+					return $converted;
+				}
+			}
+
+			return preg_replace('/[^\x09\x0A\x0D\x20-\x7E]/', '', $value);
+		}
+
+		return $value;
+	}
+
+	private function detectPreviewMime($raw){
+		if(!is_string($raw) || $raw === ''){
+			return 'application/octet-stream';
+		}
+
+		if(substr($raw, 0, 8) === "\x89PNG\x0D\x0A\x1A\x0A"){
+			return 'image/png';
+		}
+
+		if(substr($raw, 0, 3) === "\xFF\xD8\xFF"){
+			return 'image/jpeg';
+		}
+
+		if(substr($raw, 0, 2) === 'BM'){
+			return 'image/bmp';
+		}
+
+		if(substr($raw, 0, 2) === 'P5'){
+			return 'image/x-portable-graymap';
+		}
+
+		if(substr($raw, 0, 2) === 'P6'){
+			return 'image/x-portable-pixmap';
+		}
+
+		return 'application/octet-stream';
+	}
+
+	private function convertPnmRawToPng($raw){
+		$len = strlen($raw);
+		$idx = 0;
+
+		$nextToken = function() use ($raw, $len, &$idx){
+			while($idx < $len){
+				$ch = $raw[$idx];
+				if($ch === '#'){
+					while($idx < $len && $raw[$idx] !== "\n"){
+						$idx++;
+					}
+					continue;
+				}
+				if(!ctype_space($ch)){
+					break;
+				}
+				$idx++;
+			}
+
+			if($idx >= $len){
+				return null;
+			}
+
+			$start = $idx;
+			while($idx < $len && !ctype_space($raw[$idx]) && $raw[$idx] !== '#'){
+				$idx++;
+			}
+
+			return substr($raw, $start, $idx - $start);
+		};
+
+		$magic = $nextToken();
+		$width = $nextToken();
+		$height = $nextToken();
+		$maxVal = $nextToken();
+
+		if(($magic !== 'P5' && $magic !== 'P6') || !is_numeric($width) || !is_numeric($height) || !is_numeric($maxVal)){
+			return false;
+		}
+
+		$w = (int)$width;
+		$h = (int)$height;
+		$max = (int)$maxVal;
+		if($w <= 0 || $h <= 0 || $max <= 0 || $max > 255){
+			return false;
+		}
+
+		while($idx < $len && ctype_space($raw[$idx])){
+			$idx++;
+		}
+
+		$pixelData = substr($raw, $idx);
+		$expected = ($magic === 'P5') ? ($w * $h) : ($w * $h * 3);
+		if(strlen($pixelData) < $expected){
+			return false;
+		}
+
+		$im = imagecreatetruecolor($w, $h);
+		if($im === false){
+			return false;
+		}
+
+		$pos = 0;
+		for($y = 0; $y < $h; $y++){
+			for($x = 0; $x < $w; $x++){
+				if($magic === 'P5'){
+					$g = ord($pixelData[$pos]);
+					$pos++;
+					$color = ($g << 16) | ($g << 8) | $g;
+				}else{
+					$r = ord($pixelData[$pos]);
+					$g = ord($pixelData[$pos + 1]);
+					$b = ord($pixelData[$pos + 2]);
+					$pos += 3;
+					$color = ($r << 16) | ($g << 8) | $b;
+				}
+				imagesetpixel($im, $x, $y, $color);
+			}
+		}
+
+		ob_start();
+		imagepng($im);
+		$png = ob_get_clean();
+		imagedestroy($im);
+
+		if($png === false || $png === ''){
+			return false;
+		}
+
+		return $png;
+	}
+
 	private function jsonDicomProcessResponse($status, $msg, array $extra){
 		$response = array(
 			'status' => $status,
@@ -1006,6 +1371,12 @@ class CA003_solicitudes extends CI_Controller {
 		$progressTextId = 'dicomProgressText_' . $solicitudId;
 		$logId = 'dicomProcessLog_' . $solicitudId;
 		$statusWrapId = 'dicomStatusWrap_' . $solicitudId;
+		$modalId = 'dicomDetailModal_' . $solicitudId;
+		$modalFileNameId = 'dicomDetailFileName_' . $solicitudId;
+		$modalMetaId = 'dicomDetailMetadata_' . $solicitudId;
+		$modalImgId = 'dicomDetailImage_' . $solicitudId;
+		$modalAlertId = 'dicomDetailAlert_' . $solicitudId;
+		$modalLoadingId = 'dicomDetailLoading_' . $solicitudId;
 
 		$html = '';
 		$html .= '<hr>';
@@ -1023,7 +1394,7 @@ class CA003_solicitudes extends CI_Controller {
 		}else{
 			$html .= '<ul class="list-group" id="' . $listId . '">';
 			foreach($files as $index => $file){
-				$html .= '<li class="list-group-item py-2 dicom-file-item" data-item-index="' . $index . '">';
+				$html .= '<li class="list-group-item py-2 dicom-file-item" data-item-index="' . $index . '" data-file-id="' . (int)$file['id'] . '">';
 				$html .= '<div class="d-flex align-items-start justify-content-between">';
 				$html .= '<div class="pr-2">';
 				$html .= '<div class="font-weight-bold text-truncate" title="' . html_escape($file['name']) . '">' . html_escape($file['name']) . '</div>';
@@ -1035,7 +1406,10 @@ class CA003_solicitudes extends CI_Controller {
 					$html .= '<div class="small text-danger" title="' . html_escape($file['pacs_error']) . '">' . html_escape(substr($file['pacs_error'], 0, 120)) . '</div>';
 				}
 				$html .= '</div>';
+				$html .= '<div class="d-flex flex-column align-items-end">';
+				$html .= '<button type="button" class="btn btn-sm btn-light-info mb-2 dicom-view-detail" title="Ver detalle DICOM" data-file-id="' . (int)$file['id'] . '"><i class="fa fa-eye"></i></button>';
 				$html .= '<span class="badge ' . html_escape($file['pacs_status_class']) . '">' . html_escape($file['pacs_status_label']) . '</span>';
+				$html .= '</div>';
 				$html .= '</div>';
 				$html .= '</li>';
 			}
@@ -1063,9 +1437,43 @@ class CA003_solicitudes extends CI_Controller {
 		$html .= '</div>';
 		$html .= '</div>';
 		$html .= '</div>';
+		$html .= '<div class="modal fade" id="' . $modalId . '" tabindex="-1" role="dialog" aria-hidden="true">';
+		$html .= '<div class="modal-dialog modal-xl" role="document">';
+		$html .= '<div class="modal-content">';
+		$html .= '<div class="modal-header">';
+		$html .= '<h5 class="modal-title">Detalle DICOM</h5>';
+		$html .= '<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>';
+		$html .= '</div>';
+		$html .= '<div class="modal-body">';
+		$html .= '<div class="font-weight-bold mb-3" id="' . $modalFileNameId . '">-</div>';
+		$html .= '<div class="alert alert-danger d-none" id="' . $modalAlertId . '"></div>';
+		$html .= '<div class="row">';
+		$html .= '<div class="col-md-6">';
+		$html .= '<h6>Metadatos</h6>';
+		$html .= '<div class="table-responsive">';
+		$html .= '<table class="table table-sm table-bordered mb-0"><tbody id="' . $modalMetaId . '"></tbody></table>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '<div class="col-md-6 mt-4 mt-md-0 text-center">';
+		$html .= '<h6>Imagen</h6>';
+		$html .= '<div class="small text-muted mb-2 d-none" id="' . $modalLoadingId . '">Generando preview...</div>';
+		$html .= '<img id="' . $modalImgId . '" src="" alt="Preview DICOM" style="max-width:100%; max-height:65vh; border:1px solid #ddd; border-radius:4px;" />';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '<div class="modal-footer">';
+		$html .= '<button type="button" class="btn btn-light-primary" data-dismiss="modal">Cerrar</button>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
+		$html .= '</div>';
 
 		$html .= '<script>';
-		$html .= '(function(){';
+		$html .= '(function bootDicomSection(){';
+		$html .= 'if(typeof window.jQuery === "undefined"){';
+		$html .= 'window.setTimeout(bootDicomSection, 60);';
+		$html .= 'return;';
+		$html .= '}';
 		$html .= 'var sectionId = "' . $sectionId . '";';
 		$html .= 'var listId = "' . $listId . '";';
 		$html .= 'var prevId = "' . $prevId . '";';
@@ -1075,8 +1483,15 @@ class CA003_solicitudes extends CI_Controller {
 		$html .= 'var progressBarId = "' . $progressBarId . '";';
 		$html .= 'var progressTextId = "' . $progressTextId . '";';
 		$html .= 'var logId = "' . $logId . '";';
+		$html .= 'var modalId = "' . $modalId . '";';
+		$html .= 'var modalFileNameId = "' . $modalFileNameId . '";';
+		$html .= 'var modalMetaId = "' . $modalMetaId . '";';
+		$html .= 'var modalImgId = "' . $modalImgId . '";';
+		$html .= 'var modalAlertId = "' . $modalAlertId . '";';
+		$html .= 'var modalLoadingId = "' . $modalLoadingId . '";';
 		$html .= 'var solicitudId = ' . (int)$solicitudId . ';';
 		$html .= 'var processUrl = "' . base_url() . 'index.php/admin/' . self::$NAME . '/processDicomBatch";';
+		$html .= 'var detailUrl = "' . base_url() . 'index.php/admin/' . self::$NAME . '/get_dicom_file_detail";';
 		$html .= 'var pageSize = 5;';
 		$html .= 'var page = 1;';
 		$html .= 'var processing = false;';
@@ -1085,6 +1500,27 @@ class CA003_solicitudes extends CI_Controller {
 		$html .= 'var $items = jQuery("#" + listId + " .dicom-file-item");';
 		$html .= 'var totalItems = $items.length;';
 		$html .= 'var totalPages = Math.max(1, Math.ceil(totalItems / pageSize));';
+		$html .= 'function toLabel(key){ return String(key || "").replace(/_/g, " ").replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }';
+		$html .= 'function showDetailError(msg){ jQuery("#" + modalAlertId).removeClass("d-none").text(msg || "No se pudo cargar el detalle DICOM."); }';
+		$html .= 'function clearDetailError(){ jQuery("#" + modalAlertId).addClass("d-none").text(""); }';
+		$html .= 'function setDetailLoading(isLoading){ if(isLoading){ jQuery("#" + modalLoadingId).removeClass("d-none"); } else { jQuery("#" + modalLoadingId).addClass("d-none"); } }';
+		$html .= 'function renderMetadataRows(metadata){';
+		$html .= 'var rows = "";';
+		$html .= 'jQuery.each(metadata || {}, function(key, value){';
+		$html .= 'var safeKey = jQuery("<div>").text(toLabel(key)).html();';
+		$html .= 'var safeValue = jQuery("<div>").text(value === null ? "" : String(value)).html();';
+		$html .= 'rows += "<tr><th style=\"width:38%\">" + safeKey + "</th><td>" + safeValue + "</td></tr>";';
+		$html .= '});';
+		$html .= 'if(rows === ""){ rows = "<tr><td colspan=\"2\" class=\"text-muted\">Sin metadatos disponibles</td></tr>"; }';
+		$html .= 'jQuery("#" + modalMetaId).html(rows);';
+		$html .= '}';
+		$html .= 'function buildDetailPayload(fileId){';
+		$html .= 'var $form = jQuery("#formModalElement");';
+		$html .= 'var payload = $form.length ? $form.serializeArray() : [];';
+		$html .= 'payload.push({name:"ele_id", value: solicitudId});';
+		$html .= 'payload.push({name:"archivo_id", value: fileId});';
+		$html .= 'return jQuery.param(payload);';
+		$html .= '}';
 		$html .= 'function setProgress(progress){';
 		$html .= 'if(!progress){ return; }';
 		$html .= 'var total = parseInt(progress.total || 0, 10);';
@@ -1137,6 +1573,38 @@ class CA003_solicitudes extends CI_Controller {
 		$html .= 'jQuery(document).off("click.dicomPrev_" + sectionId, "#" + prevId).on("click.dicomPrev_" + sectionId, "#" + prevId, function(e){ e.preventDefault(); page--; renderPage(); });';
 		$html .= 'jQuery(document).off("click.dicomNext_" + sectionId, "#" + nextId).on("click.dicomNext_" + sectionId, "#" + nextId, function(e){ e.preventDefault(); page++; renderPage(); });';
 		$html .= 'jQuery(document).off("click.dicomProcess_" + sectionId, "#" + buttonId).on("click.dicomProcess_" + sectionId, "#" + buttonId, function(e){ e.preventDefault(); if(processing){ return; } processing = true; jQuery(this).prop("disabled", true).text("Procesando..."); appendLog("Inicio del procesado DICOM.", false); processNext(); });';
+		$html .= 'jQuery(document).off("click.dicomView_" + sectionId, "#" + listId + " .dicom-view-detail").on("click.dicomView_" + sectionId, "#" + listId + " .dicom-view-detail", function(e){';
+		$html .= 'e.preventDefault();';
+		$html .= 'var fileId = parseInt(jQuery(this).data("file-id") || 0, 10);';
+		$html .= 'if(fileId <= 0){ return; }';
+		$html .= 'clearDetailError();';
+		$html .= 'setDetailLoading(true);';
+		$html .= 'jQuery("#" + modalFileNameId).text("Cargando...");';
+		$html .= 'jQuery("#" + modalMetaId).html("<tr><td colspan=\"2\" class=\"text-muted\">Cargando metadatos...</td></tr>");';
+		$html .= 'jQuery("#" + modalImgId).attr("src", "");';
+		$html .= 'jQuery("#" + modalId).modal("show");';
+		$html .= 'var payload = buildDetailPayload(fileId);';
+		$html .= 'jQuery.ajax({';
+		$html .= 'url: detailUrl,';
+		$html .= 'method: "POST",';
+		$html .= 'dataType: "json",';
+		$html .= 'data: payload,';
+		$html .= 'success: function(response){';
+		$html .= 'setDetailLoading(false);';
+		$html .= 'if(response && response.token && response.hash){ jQuery("input[name=\"" + response.token + "\"]").val(response.hash); }';
+		$html .= 'if(!response || response.status !== "success"){ showDetailError(response && response.msg ? response.msg : "No se pudo cargar el detalle DICOM."); return; }';
+		$html .= 'jQuery("#" + modalFileNameId).text(response.file_name || ("Archivo #" + fileId));';
+		$html .= 'renderMetadataRows(response.metadata || {});';
+		$html .= 'if(response.preview_data_uri){ jQuery("#" + modalImgId).attr("src", response.preview_data_uri); } else if(response.preview_disabled_reason){ showDetailError(response.preview_disabled_reason); } else { showDetailError("No se pudo generar la imagen del DICOM."); }';
+		$html .= '},';
+		$html .= 'error: function(xhr){';
+		$html .= 'setDetailLoading(false);';
+		$html .= 'var detail = "";';
+		$html .= 'if(xhr && xhr.status){ detail = " (HTTP " + xhr.status + ")"; }';
+		$html .= 'showDetailError("Error de comunicacion con el servidor al pedir detalle DICOM" + detail + ".");';
+		$html .= '}';
+		$html .= '});';
+		$html .= '});';
 		$html .= 'renderPage();';
 		$html .= '})();';
 		$html .= '</script>';

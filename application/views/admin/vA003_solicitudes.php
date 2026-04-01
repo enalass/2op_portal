@@ -338,11 +338,22 @@
                     field: 'Actions',
                     title: 'Acciones',
                     sortable: false,
-                    width: 125,
+                  width: 165,
                     overflow: 'visible',
                     autoHide: false,
                     template: function(row) {
                         return '\
+                      <a href="<?php echo base_url(); ?>index.php/admin/<?php echo $controller; ?>/viewElement/' + row.RecordID + '" class="btn btn-sm btn-clean btn-icon mr-2" title="Ver solicitud">\
+                        <span class="svg-icon svg-icon-md">\
+                          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">\
+                            <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">\
+                              <rect x="0" y="0" width="24" height="24"/>\
+                              <path d="M12,5 C7.5228475,5 3.73333099,7.94318182 2,12 C3.73333099,16.0568182 7.5228475,19 12,19 C16.4771525,19 20.266669,16.0568182 22,12 C20.266669,7.94318182 16.4771525,5 12,5 Z" fill="#000000" fill-rule="nonzero" opacity="0.3"/>\
+                              <path d="M12,15 C10.3431458,15 9,13.6568542 9,12 C9,10.3431458 10.3431458,9 12,9 C13.6568542,9 15,10.3431458 15,12 C15,13.6568542 13.6568542,15 12,15 Z" fill="#000000"/>\
+                            </g>\
+                          </svg>\
+                        </span>\
+                      </a>\
                             <a href="javascript:;" class="btn btn-sm btn-clean btn-icon mr-2 buttonEditElement" title="Editar solicitud" idclass="' + row.RecordID + '">\
                                 <span class="svg-icon svg-icon-md">\
                                     <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="24px" height="24px" viewBox="0 0 24 24" version="1.1">\
