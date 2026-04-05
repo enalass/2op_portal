@@ -9,6 +9,8 @@ $warningMessage = isset($warningMessage) ? $warningMessage : '';
 $csrfTokenName = $this->security->get_csrf_token_name();
 $csrfTokenHash = $this->security->get_csrf_hash();
 $estadoClienteActual = ($selectedSolicitud && isset($selectedSolicitud['estado_cliente_id'])) ? (int)$selectedSolicitud['estado_cliente_id'] : 0;
+$estadoRealActual = ($selectedSolicitud && isset($selectedSolicitud['estado_real_id'])) ? (int)$selectedSolicitud['estado_real_id'] : 0;
+$canUploadStudies = ($estadoRealActual >= 5);
 $isLockedState = ($estadoClienteActual >= 7);
 ?>
 
@@ -259,7 +261,7 @@ $isLockedState = ($estadoClienteActual >= 7);
                             </details>
                         <?php endif; ?>
 
-                        <?php if ((int)$selectedSolicitud['estado_cliente_id'] >= 5): ?>
+                        <?php if ($canUploadStudies): ?>
                             <details class="mb-4">
                                 <summary class="font-weight-bold mb-3" style="cursor:pointer;">Ficheros de estudio</summary>
                             <div class="card border mb-0 bg-white">

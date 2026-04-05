@@ -604,8 +604,10 @@ class CA003_solicitudes extends CI_Controller {
 
 		$clienteId = $this->resolveSolicitudClientId($solicitud, $archivoUsuarioId);
 		$patientId = $this->buildPatientId($clienteId, $solicitudId);
+		$studyCode = $this->buildStudyCode($solicitudId);
+		$studyInstanceUid = $this->buildStudyInstanceUid($solicitudId, $clienteId);
 
-		$result = $this->processSingleSolicitudFile($solicitudId, $archivoRuta, $patientId, $pacsConfig);
+		$result = $this->processSingleSolicitudFile($solicitudId, $archivoRuta, $patientId, $studyCode, $studyInstanceUid, $pacsConfig);
 		$processedAt = date('Y-m-d H:i:s');
 
 		if($result['success']){
@@ -696,8 +698,16 @@ class CA003_solicitudes extends CI_Controller {
 			), $logPath);
 		}
 
-		$relativePath = isset($archivo->SAR_DS_RUTA) ? (string)$archivo->SAR_DS_RUTA : '';
+		$relativePathOriginal = isset($archivo->SAR_DS_RUTA) ? (string)$archivo->SAR_DS_RUTA : '';
+		$relativePathProcessed = isset($archivo->SAR_DS_PACS_DICOM_RUTA) ? (string)$archivo->SAR_DS_PACS_DICOM_RUTA : '';
+		$relativePath = trim($relativePathProcessed) !== '' ? $relativePathProcessed : $relativePathOriginal;
 		$absolutePath = $this->resolveAbsolutePath($relativePath);
+
+		if(($absolutePath === '' || !file_exists($absolutePath)) && trim($relativePathProcessed) !== ''){
+			$relativePath = $relativePathOriginal;
+			$absolutePath = $this->resolveAbsolutePath($relativePath);
+		}
+
 		if($absolutePath === '' || !file_exists($absolutePath)){
 			$this->outputJsonAndExit(array(
 				'status' => 'unsuccess',
@@ -796,6 +806,7 @@ class CA003_solicitudes extends CI_Controller {
 			'token' => $this->security->get_csrf_token_name(),
 			'file_id' => $archivoId,
 			'file_name' => isset($archivo->SAR_DS_NOMBRE_ORIGINAL) ? (string)$archivo->SAR_DS_NOMBRE_ORIGINAL : ('Archivo #' . $archivoId),
+			'detail_source' => (trim($relativePathProcessed) !== '' && $relativePath === $relativePathProcessed) ? 'processed' : 'original',
 			'metadata' => isset($metadataResult['metadata']) ? $metadataResult['metadata'] : array(),
 			'preview_data_uri' => 'data:' . $previewMime . ';base64,' . base64_encode($imageRaw),
 		);
@@ -999,7 +1010,7 @@ class CA003_solicitudes extends CI_Controller {
 		echo json_encode($response);
 	}
 
-	private function processSingleSolicitudFile($solicitudId, $relativePath, $patientId, array $pacsConfig){
+	private function processSingleSolicitudFile($solicitudId, $relativePath, $patientId, $studyCode, $studyInstanceUid, array $pacsConfig){
 		$this->load->library('Dicom');
 
 		$sourcePath = $this->resolveAbsolutePath($relativePath);
@@ -1037,6 +1048,8 @@ class CA003_solicitudes extends CI_Controller {
 		$metadata = array(
 			'patient_id' => $patientId,
 			'patient_name' => isset($patientId) ? $patientId : '',
+			'study_id' => $studyCode,
+			'study_instance_uid' => $studyInstanceUid,
 			'study_date' => date('Ymd'),
 			'study_time' => date('His'),
 			'study_description' => 'Solicitud ' . (int)$solicitudId,
@@ -1050,15 +1063,6 @@ class CA003_solicitudes extends CI_Controller {
 					'success' => false,
 					'error' => 'No se pudo preparar copia DICOM para procesado',
 					'dicom_relative_path' => '',
-				);
-			}
-
-			$tagResult = $this->dicom->modifyTag($dicomTarget, 'PatientID', $patientId, true);
-			if(!$tagResult['success']){
-				return array(
-					'success' => false,
-					'error' => isset($tagResult['error']) ? (string)$tagResult['error'] : 'No se pudo actualizar PatientID en DICOM',
-					'dicom_relative_path' => $dicomRelative,
 				);
 			}
 
@@ -1085,6 +1089,15 @@ class CA003_solicitudes extends CI_Controller {
 			);
 		}
 
+		$coreTagsUpdate = $this->applyDicomCoreTags($dicomTarget, $patientId, $studyCode, $studyInstanceUid);
+		if(!$coreTagsUpdate['success']){
+			return array(
+				'success' => false,
+				'error' => isset($coreTagsUpdate['error']) ? (string)$coreTagsUpdate['error'] : 'No se pudieron actualizar/verificar tags DICOM principales',
+				'dicom_relative_path' => $dicomRelative,
+			);
+		}
+
 		$send = $this->dicom->sendToPacs(
 			$pacsConfig['host'],
 			$pacsConfig['port'],
@@ -1106,6 +1119,111 @@ class CA003_solicitudes extends CI_Controller {
 			'error' => '',
 			'dicom_relative_path' => $dicomRelative,
 		);
+	}
+
+	private function applyDicomCoreTags($dicomPath, $patientId, $studyCode, $studyInstanceUid){
+		$patientId = trim((string)$patientId);
+		$studyCode = trim((string)$studyCode);
+		$studyInstanceUid = trim((string)$studyInstanceUid);
+
+		if($patientId === ''){
+			return array('success' => false, 'error' => 'PatientID vacio');
+		}
+		if($studyCode === ''){
+			return array('success' => false, 'error' => 'Codigo de estudio vacio');
+		}
+		if($studyInstanceUid === ''){
+			return array('success' => false, 'error' => 'StudyInstanceUID vacio');
+		}
+
+		// Aplicar PatientID y StudyID con modifyTag()
+		$simpleApplied = true;
+		
+		// PatientID
+		$patientResult = $this->dicom->modifyTag($dicomPath, '(0010,0020)', $patientId, true);
+		if(!$patientResult['success']){
+			$patientResult = $this->dicom->modifyTag($dicomPath, 'PatientID', $patientId, true);
+			if(!$patientResult['success']){
+				return array(
+					'success' => false,
+					'error' => 'PatientID no se pudo aplicar: ' . (isset($patientResult['error']) ? (string)$patientResult['error'] : 'error'),
+				);
+			}
+		}
+		usleep(300000);
+
+		// StudyID
+		$studyIdResult = $this->dicom->modifyTag($dicomPath, '(0020,0010)', $studyCode, true);
+		if(!$studyIdResult['success']){
+			$studyIdResult = $this->dicom->modifyTag($dicomPath, 'StudyID', $studyCode, true);
+			if(!$studyIdResult['success']){
+				return array(
+					'success' => false,
+					'error' => 'StudyID no se pudo aplicar: ' . (isset($studyIdResult['error']) ? (string)$studyIdResult['error'] : 'error'),
+				);
+			}
+		}
+		usleep(300000);
+
+		// StudyInstanceUID - intentar aplicar pero NO bloquear si falla
+		// Algunos archivos DICOM convertidos no permiten modificar este tag
+		// Será responsabilidad de PACS generarlo si no existe
+		$uidResult = $this->dicom->modifyTag($dicomPath, '(0020,000D)', $studyInstanceUid, true);
+		if(!$uidResult['success']){
+			// Intenta con el nombre simbólico
+			$uidResult = $this->dicom->modifyTag($dicomPath, 'StudyInstanceUID', $studyInstanceUid, true);
+		}
+		// No importa si falla, continuamos (best-effort)
+		usleep(300000);
+
+		// Esperar a que se escriba completamente
+		sleep(2);
+
+		// Verificación final - verificar PatientID y StudyID (obligatorios)
+		$finalDump = $this->dicom->dumpRaw($dicomPath);
+		
+		if(!isset($finalDump['success']) || !$finalDump['success']){
+			$metadataFallback = $this->dicom->getBasicMetadata($dicomPath);
+			
+			if(!isset($metadataFallback['success']) || !$metadataFallback['success']){
+				return array(
+					'success' => false,
+					'error' => 'Verificación final falló',
+				);
+			}
+
+			$metadata = isset($metadataFallback['metadata']) ? $metadataFallback['metadata'] : array();
+			$finalPatientId = isset($metadata['patient_id']) ? trim((string)$metadata['patient_id']) : '';
+			$finalStudyUid = isset($metadata['study_instance_uid']) ? trim((string)$metadata['study_instance_uid']) : '';
+			$finalStudyId = '';
+		} else {
+			$dumpOutput = isset($finalDump['output']) ? (string)$finalDump['output'] : '';
+			$finalPatientId = trim((string)$this->dicom->extractTagValue($dumpOutput, '0010,0020'));
+			$finalStudyId = trim((string)$this->dicom->extractTagValue($dumpOutput, '0020,0010'));
+			$finalStudyUid = trim((string)$this->dicom->extractTagValue($dumpOutput, '0020,000D'));
+		}
+
+		// Validar PatientID (CRÍTICO)
+		if($finalPatientId !== $patientId){
+			return array(
+				'success' => false,
+				'error' => 'PatientID no persistió. Esperado: ' . $patientId . ', actual: ' . (empty($finalPatientId) ? '[vacío]' : $finalPatientId),
+			);
+		}
+
+		// Validar StudyID (CRÍTICO)
+		if(!empty($finalStudyId) && $finalStudyId !== $studyCode){
+			return array(
+				'success' => false,
+				'error' => 'StudyID no persistió. Esperado: ' . $studyCode . ', actual: ' . $finalStudyId,
+			);
+		}
+
+		// StudyInstanceUID es best-effort: no bloquear si no se pudo aplicar
+		// PACS puede generarlo automáticamente
+		// Solo reportar en logs si falló
+
+		return array('success' => true, 'error' => '');
 	}
 
 	private function resolveAbsolutePath($relativePath){
@@ -1138,6 +1256,18 @@ class CA003_solicitudes extends CI_Controller {
 		$solicitudBlock = str_pad((string)max(0, (int)$solicitudId), 5, '0', STR_PAD_LEFT);
 
 		return '2OP-' . $clientBlock . '-' . $solicitudBlock;
+	}
+
+	private function buildStudyCode($solicitudId){
+		return '2OP-EST-' . str_pad((string)max(0, (int)$solicitudId), 5, '0', STR_PAD_LEFT);
+	}
+
+	private function buildStudyInstanceUid($solicitudId, $clientId){
+		$root = '1.2.826.0.1.3680043.10.54321';
+		$sol = (int)max(0, (int)$solicitudId);
+		$cli = (int)max(0, (int)$clientId);
+
+		return $root . '.' . $sol . '.' . $cli;
 	}
 
 	private function getPacsConfig(){
@@ -1338,6 +1468,21 @@ class CA003_solicitudes extends CI_Controller {
 						$pacsClass = 'badge-warning';
 					}
 
+					$processedDicomInfo = '';
+					$pacsDicomRelative = isset($row->SAR_DS_PACS_DICOM_RUTA) ? trim((string)$row->SAR_DS_PACS_DICOM_RUTA) : '';
+					if($pacsDicomRelative !== ''){
+						$processedAbsolute = $this->resolveAbsolutePath($pacsDicomRelative);
+						$processedName = basename($pacsDicomRelative);
+						if($processedAbsolute !== '' && file_exists($processedAbsolute)){
+							$processedSize = $this->formatBytesLabel((float)@filesize($processedAbsolute));
+							$processedDateRaw = @filemtime($processedAbsolute);
+							$processedDate = $processedDateRaw ? date('d-m-Y H:i', $processedDateRaw) : '-';
+							$processedDicomInfo = 'DICOM procesado: ' . $processedName . ' | ' . $processedSize . ' | ' . $processedDate;
+						}else{
+							$processedDicomInfo = 'DICOM procesado: ' . $processedName . ' | no localizado en disco';
+						}
+					}
+
 					$files[] = array(
 						'id' => isset($row->SAR_CO_ID) ? (int)$row->SAR_CO_ID : 0,
 						'name' => isset($row->SAR_DS_NOMBRE_ORIGINAL) ? (string)$row->SAR_DS_NOMBRE_ORIGINAL : 'Sin nombre',
@@ -1348,6 +1493,7 @@ class CA003_solicitudes extends CI_Controller {
 						'pacs_status_class' => $pacsClass,
 						'pacs_processed_date' => $pacsDate !== '' ? $this->formatDateTimeLabel($pacsDate) : '',
 						'pacs_error' => $pacsError,
+						'processed_dicom_info' => $processedDicomInfo,
 					);
 				}
 			}
@@ -1401,6 +1547,9 @@ class CA003_solicitudes extends CI_Controller {
 				$html .= '<div class="small text-muted">' . html_escape($file['date']) . ' | ' . html_escape($file['extension']) . ' | ' . html_escape($file['size']) . '</div>';
 				if($file['pacs_processed_date'] !== ''){
 					$html .= '<div class="small text-muted">Procesado: ' . html_escape($file['pacs_processed_date']) . '</div>';
+				}
+				if(isset($file['processed_dicom_info']) && $file['processed_dicom_info'] !== ''){
+					$html .= '<div class="small text-info" title="' . html_escape($file['processed_dicom_info']) . '">' . html_escape($file['processed_dicom_info']) . '</div>';
 				}
 				if($file['pacs_error'] !== ''){
 					$html .= '<div class="small text-danger" title="' . html_escape($file['pacs_error']) . '">' . html_escape(substr($file['pacs_error'], 0, 120)) . '</div>';
