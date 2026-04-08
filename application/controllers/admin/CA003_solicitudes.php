@@ -574,6 +574,9 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		$clienteId = (isset($solicitud->USR_CO_ID) && (int)$solicitud->USR_CO_ID > 0) ? (int)$solicitud->USR_CO_ID : 0;
+		$tipoEstudio = isset($solicitud->SOL_DS_NOMBRE) ? trim((string)$solicitud->SOL_DS_NOMBRE) : '';
+		$motivoConsulta = isset($solicitud->SOL_DS_ADQ_MOTIVO) ? trim((string)$solicitud->SOL_DS_ADQ_MOTIVO) : '';
+		$pacienteNombre = trim((string)(isset($solicitud->SOL_DS_PAC_NOMBRE) ? $solicitud->SOL_DS_PAC_NOMBRE : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO1) ? $solicitud->SOL_DS_PAC_APELLIDO1 : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO2) ? $solicitud->SOL_DS_PAC_APELLIDO2 : ''));
 		$payload = array(
 			'solicitud_id' => $solicitudId,
 			'solicitud_codigo' => $this->composeSolicitudCode($clienteId, $solicitudId),
@@ -581,21 +584,30 @@ class CA003_solicitudes extends CI_Controller {
 			'estado' => isset($solicitud->ESO_DS_NAME) ? (string)$solicitud->ESO_DS_NAME : '',
 			'origen' => isset($solicitud->FSO_DS_NAME) ? (string)$solicitud->FSO_DS_NAME : '',
 			'fecha_creacion' => !empty($solicitud->SOL_DT_CREATE) ? $this->formatDateTimeLabel($solicitud->SOL_DT_CREATE) : '',
-			'paciente' => trim((string)(isset($solicitud->SOL_DS_PAC_NOMBRE) ? $solicitud->SOL_DS_PAC_NOMBRE : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO1) ? $solicitud->SOL_DS_PAC_APELLIDO1 : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO2) ? $solicitud->SOL_DS_PAC_APELLIDO2 : '')),
+			'paciente' => $pacienteNombre,
 			'paciente_documento' => isset($solicitud->SOL_DS_PAC_DOCUMENTO) ? (string)$solicitud->SOL_DS_PAC_DOCUMENTO : '',
 			'paciente_fecha_nacimiento' => isset($solicitud->SOL_DT_PAC_FECHA_NACIMIENTO) ? (string)$solicitud->SOL_DT_PAC_FECHA_NACIMIENTO : '',
 			'paciente_sexo' => isset($solicitud->SOL_DS_PAC_SEXO) ? (string)$solicitud->SOL_DS_PAC_SEXO : '',
 			'email' => isset($solicitud->SOL_DS_PAC_EMAIL) && trim((string)$solicitud->SOL_DS_PAC_EMAIL) !== '' ? (string)$solicitud->SOL_DS_PAC_EMAIL : (isset($solicitud->SOL_DS_ADQ_MAIL) ? (string)$solicitud->SOL_DS_ADQ_MAIL : ''),
 			'telefono' => isset($solicitud->SOL_DS_PAC_TELEFONO) && trim((string)$solicitud->SOL_DS_PAC_TELEFONO) !== '' ? (string)$solicitud->SOL_DS_PAC_TELEFONO : (isset($solicitud->SOL_DS_ADQ_TELEFONO) ? (string)$solicitud->SOL_DS_ADQ_TELEFONO : ''),
+			'tipo_estudio' => $tipoEstudio,
+			'zona_exploracion' => $tipoEstudio,
+			'fecha_estudio' => isset($informeJson['date']) ? (string)$informeJson['date'] : '',
+			'medico_prescriptor' => isset($solicitud->SOL_DS_ADQ_MAIL) ? (string)$solicitud->SOL_DS_ADQ_MAIL : '',
+			'sociedad_medica' => self::$COMPANY,
+			'identificador_estudio' => isset($informeJson['patient_id']) ? (string)$informeJson['patient_id'] : $this->composeSolicitudCode($clienteId, $solicitudId),
+			'tecnico_radiodiagnostico' => '',
+			'informacion_clinica' => $motivoConsulta,
 			'informe_fecha' => isset($informeJson['date']) ? (string)$informeJson['date'] : '',
 			'radiologo' => isset($informeJson['radiologist']) ? (string)$informeJson['radiologist'] : '',
 			'colegiado' => isset($informeJson['membership']) ? (string)$informeJson['membership'] : '',
 			'patient_id' => isset($informeJson['patient_id']) ? (string)$informeJson['patient_id'] : '',
 			'informe_texto' => isset($informeJson['report']) ? (string)$informeJson['report'] : '',
+			'conclusion_texto' => isset($informeJson['conclusion']) ? (string)$informeJson['conclusion'] : '',
 		);
 
-		$this->load->library('Solicitudinforme_pdf');
-		$this->solicitudinforme_pdf->outputInformeSolicitud($payload);
+		$this->load->library('Solicitudinforme_pdf_v2');
+		$this->solicitudinforme_pdf_v2->outputInformeSolicitud($payload);
 	}
 
 	public function processDicomBatch(){
