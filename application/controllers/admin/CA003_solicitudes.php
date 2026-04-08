@@ -21,6 +21,7 @@ class CA003_solicitudes extends CI_Controller {
 		$this->load->model(self::$MODEL);
 		$this->load->model('usersmodel');
 		$this->load->model('Solicitudarchivosmodel');
+		$this->load->model('Apimodel');
 	}
 
 	public function index()
@@ -62,6 +63,10 @@ class CA003_solicitudes extends CI_Controller {
 		$elements = $this->{self::$MODEL}->getElementsList();
 		if($elements != false){
 			foreach ($elements->result() as $element) {
+				$solicitudId = (int)$element->{self::$CODE_DB};
+				$clienteId = isset($element->USR_CO_ID) ? (int)$element->USR_CO_ID : 0;
+				$solicitudClienteId = $this->composeSolicitudCode($clienteId, $solicitudId);
+
 				$estadoId = (int)$element->ESO_CO_ID;
 				$stateBucket = 'otro';
 				if($estadoId === 1){
@@ -81,7 +86,8 @@ class CA003_solicitudes extends CI_Controller {
 				}
 
 				$data[] = array(
-								"RecordID"			=>intval($element->{self::$CODE_DB})
+							"RecordID"			=>intval($element->{self::$CODE_DB})
+							,"SolicitudClienteID"	=>$solicitudClienteId
 							,"StateId"			=>(int)$element->ESO_CO_ID
 							,"StateBucket"		=>$stateBucket
 								,"Name"				=>$element->{self::$NAME_DB}
@@ -92,6 +98,13 @@ class CA003_solicitudes extends CI_Controller {
 			}
 		}
 		echo json_encode( array("meta"=>array("field"=>"RecordID"),"data"=>$data) );
+	}
+
+	private function composeSolicitudCode($clientId, $solicitudId){
+		$clientPart = str_pad((string)max(0, (int)$clientId), 4, '0', STR_PAD_LEFT);
+		$solicitudPart = str_pad((string)max(0, (int)$solicitudId), 5, '0', STR_PAD_LEFT);
+
+		return '2OP-' . $clientPart . $solicitudPart;
 	}
 
 	public function newElement(){
@@ -237,6 +250,9 @@ class CA003_solicitudes extends CI_Controller {
 			return;
 		}
 
+		$clienteId = (isset($cat->USR_CO_ID) && (int)$cat->USR_CO_ID > 0) ? (int)$cat->USR_CO_ID : 0;
+		$solicitudClienteCode = $this->composeSolicitudCode($clienteId, (int)$id);
+
 		$nombreFichero= FCPATH . "application/views/admin/" . self::$FORM . ".php";
 		$fichero = fopen($nombreFichero,"r");
 		$contenido = fread($fichero,filesize($nombreFichero));
@@ -255,6 +271,9 @@ class CA003_solicitudes extends CI_Controller {
 			"controller" => self::$NAME,
 			"javascriptMenu" => "$('#menuSolicitud').addClass('menu-item-active');",
 			"solicitudId" => (int)$id,
+			"solicitudClienteCode" => $solicitudClienteCode,
+			"showInformePdfButton" => ((int)$cat->ESO_CO_ID === 8),
+			"informePdfUrl" => base_url() . 'index.php/admin/' . self::$NAME . '/informePdf/' . (int)$id,
 			"formSolicitud" => $formulario,
 		);
 
@@ -270,12 +289,14 @@ class CA003_solicitudes extends CI_Controller {
 		$_POST['ele_ped_importe'] = $this->normalizeImporteForValidation($this->input->post('ele_ped_importe', TRUE));
 
 		$this->form_validation->set_rules('ele_name', 'nombre', 'required|trim|min_length[3]|xss_clean');
+		$this->form_validation->set_rules('ele_eso_id', 'estado', 'required|integer|greater_than[0]');
 		$this->form_validation->set_rules('ele_fso_id', 'origen de la solicitud', 'required|integer');
 		$this->form_validation->set_rules('ele_ped_importe', 'importe', 'required|decimal');
 		$this->form_validation->set_rules('ele_ped_idioma', 'idioma preferido', 'required|trim|min_length[2]|max_length[5]|alpha_dash');
 
 		$this->form_validation->set_message('required','Debes rellenar el campo '. ' %s');
 		$this->form_validation->set_message('min_length', 'El campo %s debe tener al menos %s caracteres');
+		$this->form_validation->set_message('greater_than', 'Debes seleccionar una opcion valida en %s');
 
 		if($this->form_validation->run()==FALSE){	
 
@@ -296,6 +317,7 @@ class CA003_solicitudes extends CI_Controller {
 			
 			$data = array(
 				self::$PREFIX . "_DS_NOMBRE"			=>$this->input->post('ele_name', TRUE),
+				"ESO_CO_ID"							=>$this->input->post('ele_eso_id', TRUE),
 				"FSO_CO_ID"								=>$this->input->post('ele_fso_id', TRUE),
 				self::$PREFIX . "_DS_ADQ_MAIL"			=>$this->input->post('ele_adq_mail', TRUE),
 				self::$PREFIX . "_DS_ADQ_TELEFONO"		=>$this->input->post('ele_adq_phone', TRUE),
@@ -519,6 +541,61 @@ class CA003_solicitudes extends CI_Controller {
 		);
 
 		echo json_encode($resp);
+	}
+
+	public function informePdf($id=0){
+		if($this->session->userdata('logged')!=TRUE || ($this->session->userdata('acceso'))<100){
+			show_error('Acceso denegado', 403);
+			return;
+		}
+
+		$solicitudId = (int)$id;
+		if($solicitudId <= 0){
+			show_error('Solicitud no valida', 400);
+			return;
+		}
+
+		$solicitud = $this->{self::$MODEL}->getElementById($solicitudId);
+		if($solicitud === false){
+			show_error('Solicitud no encontrada', 404);
+			return;
+		}
+
+		$informeRow = $this->Apimodel->getLatestInformeBySolicitud($solicitudId);
+		if($informeRow === false || !isset($informeRow->APT_DS_DATA)){
+			show_error('No hay informe asociado a esta solicitud', 404);
+			return;
+		}
+
+		$informeJson = json_decode((string)$informeRow->APT_DS_DATA, true);
+		if(!is_array($informeJson)){
+			show_error('El informe asociado no contiene un JSON valido', 500);
+			return;
+		}
+
+		$clienteId = (isset($solicitud->USR_CO_ID) && (int)$solicitud->USR_CO_ID > 0) ? (int)$solicitud->USR_CO_ID : 0;
+		$payload = array(
+			'solicitud_id' => $solicitudId,
+			'solicitud_codigo' => $this->composeSolicitudCode($clienteId, $solicitudId),
+			'nombre_solicitud' => isset($solicitud->SOL_DS_NOMBRE) ? (string)$solicitud->SOL_DS_NOMBRE : '',
+			'estado' => isset($solicitud->ESO_DS_NAME) ? (string)$solicitud->ESO_DS_NAME : '',
+			'origen' => isset($solicitud->FSO_DS_NAME) ? (string)$solicitud->FSO_DS_NAME : '',
+			'fecha_creacion' => !empty($solicitud->SOL_DT_CREATE) ? $this->formatDateTimeLabel($solicitud->SOL_DT_CREATE) : '',
+			'paciente' => trim((string)(isset($solicitud->SOL_DS_PAC_NOMBRE) ? $solicitud->SOL_DS_PAC_NOMBRE : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO1) ? $solicitud->SOL_DS_PAC_APELLIDO1 : '') . ' ' . (string)(isset($solicitud->SOL_DS_PAC_APELLIDO2) ? $solicitud->SOL_DS_PAC_APELLIDO2 : '')),
+			'paciente_documento' => isset($solicitud->SOL_DS_PAC_DOCUMENTO) ? (string)$solicitud->SOL_DS_PAC_DOCUMENTO : '',
+			'paciente_fecha_nacimiento' => isset($solicitud->SOL_DT_PAC_FECHA_NACIMIENTO) ? (string)$solicitud->SOL_DT_PAC_FECHA_NACIMIENTO : '',
+			'paciente_sexo' => isset($solicitud->SOL_DS_PAC_SEXO) ? (string)$solicitud->SOL_DS_PAC_SEXO : '',
+			'email' => isset($solicitud->SOL_DS_PAC_EMAIL) && trim((string)$solicitud->SOL_DS_PAC_EMAIL) !== '' ? (string)$solicitud->SOL_DS_PAC_EMAIL : (isset($solicitud->SOL_DS_ADQ_MAIL) ? (string)$solicitud->SOL_DS_ADQ_MAIL : ''),
+			'telefono' => isset($solicitud->SOL_DS_PAC_TELEFONO) && trim((string)$solicitud->SOL_DS_PAC_TELEFONO) !== '' ? (string)$solicitud->SOL_DS_PAC_TELEFONO : (isset($solicitud->SOL_DS_ADQ_TELEFONO) ? (string)$solicitud->SOL_DS_ADQ_TELEFONO : ''),
+			'informe_fecha' => isset($informeJson['date']) ? (string)$informeJson['date'] : '',
+			'radiologo' => isset($informeJson['radiologist']) ? (string)$informeJson['radiologist'] : '',
+			'colegiado' => isset($informeJson['membership']) ? (string)$informeJson['membership'] : '',
+			'patient_id' => isset($informeJson['patient_id']) ? (string)$informeJson['patient_id'] : '',
+			'informe_texto' => isset($informeJson['report']) ? (string)$informeJson['report'] : '',
+		);
+
+		$this->load->library('Solicitudinforme_pdf');
+		$this->solicitudinforme_pdf->outputInformeSolicitud($payload);
 	}
 
 	public function processDicomBatch(){
@@ -1383,7 +1460,17 @@ class CA003_solicitudes extends CI_Controller {
 			}
 		}
 
-		$estado_nombre = $get_value('ESO_DS_NAME', 'Leed');
+		$estado_options = array('' => 'Seleccionar estado');
+		$estado_options_by_id = array();
+		$estados = $this->{self::$MODEL}->getEstadosSolicitudActivos();
+		if($estados !== false){
+			foreach($estados->result() as $estado){
+				$estado_options_by_id[(int)$estado->ESO_CO_ID] = $estado->ESO_DS_NAME;
+			}
+			ksort($estado_options_by_id, SORT_NUMERIC);
+			$estado_options = $estado_options + $estado_options_by_id;
+		}
+
 		$fecha_pago_solicitud = 'Pendiente solicitud pago';
 		$fecha_pago_raw = $get_value('SOL_DT_PAGO_SOLICITADO', '');
 		if(!empty($fecha_pago_raw)){
@@ -1394,7 +1481,7 @@ class CA003_solicitudes extends CI_Controller {
 			'@FIELD_ID' => form_hidden('ele_id', $get_value(self::$CODE_DB, '0')),
 			'@FIELD_ACTION' => form_hidden('action', $action),
 			'@FIELD_NAME' => form_input(array('name'=>'ele_name', 'id'=>'ele_name','class'=>$input_class,'placeholder'=>'Nombre', 'value'=>$get_value(self::$NAME_DB), 'disabled'=>$disabled ? 'disabled' : null)),
-			'@FIELD_LEED_FORM' => form_input(array('name'=>'ele_leed_form_view', 'id'=>'ele_leed_form','class'=>$input_class, 'value'=>$estado_nombre, 'disabled'=>'disabled')),
+			'@FIELD_LEED_FORM' => form_dropdown('ele_eso_id', $estado_options, $get_value('ESO_CO_ID', ''), 'id="ele_eso_id" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_ORIGEN_SOLICITUD' => form_dropdown('ele_fso_id', $fso_options, $get_value('FSO_CO_ID'), 'id="ele_fso_id" class="' . $input_class . '"' . $disabled_attr),
 			'@FIELD_ADQ_MAIL' => form_input(array('name'=>'ele_adq_mail', 'id'=>'ele_adq_mail','class'=>$input_class,'placeholder'=>'Mail', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_MAIL'), 'disabled'=>$disabled ? 'disabled' : null)),
 			'@FIELD_ADQ_PHONE' => form_input(array('name'=>'ele_adq_phone', 'id'=>'ele_adq_phone','class'=>$input_class,'placeholder'=>'Teléfono', 'value'=>$get_value(self::$PREFIX . '_DS_ADQ_TELEFONO'), 'disabled'=>$disabled ? 'disabled' : null)),
@@ -1456,7 +1543,7 @@ class CA003_solicitudes extends CI_Controller {
 		}
 
 		$estadoId = isset($cat->ESO_CO_ID) ? (int)$cat->ESO_CO_ID : 0;
-		if($estadoId < 5){
+		if($estadoId < 5 || $estadoId >= 8){
 			return '';
 		}
 

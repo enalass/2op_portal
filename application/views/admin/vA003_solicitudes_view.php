@@ -6,10 +6,13 @@ if(($this->session->userdata('logged'))==TRUE) {
 	<div class="card card-custom">
 		<div class="card-header flex-wrap border-0 pt-6 pb-0">
 			<div class="card-title">
-				<h3 class="card-label">Solicitud #<?php echo (int)$solicitudId; ?></h3>
+				<h3 class="card-label">Solicitud #<?php echo (int)$solicitudId; ?> (<?php echo html_escape(isset($solicitudClienteCode) ? (string)$solicitudClienteCode : ''); ?>)</h3>
 			</div>
 			<div class="card-toolbar">
 				<a href="<?php echo base_url(); ?>index.php/admin/<?php echo $controller; ?>" class="btn btn-light-primary font-weight-bolder mr-2">Volver al listado</a>
+				<?php if (!empty($showInformePdfButton)): ?>
+					<a href="<?php echo html_escape($informePdfUrl); ?>" target="_blank" class="btn btn-success font-weight-bolder mr-2">Descargar informe PDF</a>
+				<?php endif; ?>
 				<button type="button" class="btn btn-warning font-weight-bolder mr-2" id="buttonSolicitarPagoPage">Solicitar pago</button>
 				<button type="button" class="btn btn-primary font-weight-bolder" id="buttonGuardarSolicitudPage">Guardar cambios</button>
 			</div>

@@ -295,6 +295,16 @@
                 // columns definition
                 columns: [
                 {
+                    field: 'SolicitudClienteID',
+                    title: 'ID solicitud',
+                    type: 'text',
+                    autoHide: false,
+                    textAlign: 'left',
+                    template: function(row) {
+                      return row.SolicitudClienteID ? row.SolicitudClienteID : '-';
+                    },
+                },
+                {
                     field: 'Name',
                     title: 'Nombre',
                     type: 'text',
