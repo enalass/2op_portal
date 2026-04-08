@@ -69,19 +69,7 @@ class CC001_panelControl extends CI_Controller {
 			$selectedDetalle = $this->Solicitudmodel->getClientSolicitudById($userId, (int)$selectedSolicitud['id']);
 			if($selectedDetalle !== false){
 				$selectedSolicitudData = $this->extractClientFormData($selectedDetalle);
-				if($this->Solicitudarchivosmodel->canUse()){
-					$filesResult = $this->Solicitudarchivosmodel->getArchivosBySolicitud((int)$selectedSolicitud['id']);
-					if($filesResult !== false){
-						foreach($filesResult->result() as $fileRow){
-							$selectedSolicitudFiles[] = array(
-								'nombre_original' => isset($fileRow->SAR_DS_NOMBRE_ORIGINAL) ? (string)$fileRow->SAR_DS_NOMBRE_ORIGINAL : '',
-								'extension' => isset($fileRow->SAR_DS_EXTENSION) ? (string)$fileRow->SAR_DS_EXTENSION : '',
-								'tam_bytes' => isset($fileRow->SAR_NM_TAM_BYTES) ? (int)$fileRow->SAR_NM_TAM_BYTES : 0,
-								'fecha' => isset($fileRow->SAR_DT_CREATE) ? $this->formatDate($fileRow->SAR_DT_CREATE) : '-',
-							);
-						}
-					}
-				}else{
+				if(!$this->Solicitudarchivosmodel->canUse()){
 					$uploadWarningMessage = 'No se puede guardar la subida porque falta la tabla de archivos de solicitud.';
 				}
 			}
@@ -101,6 +89,88 @@ class CC001_panelControl extends CI_Controller {
 		);
 
 		$this->load->view('layout_cliente', $data);
+	}
+
+	public function get_solicitud_files(){
+		@header('Content-Type: application/json; charset=utf-8');
+		@ob_end_clean();
+
+		if($this->session->userdata('logged')!=TRUE || (int)$this->session->userdata('perfil')!==4){
+			$this->outputJsonResponse(array('status' => 'unsuccess', 'msg' => 'No autorizado'));
+		}
+
+		$userId = (int)$this->session->userdata('id');
+		$solicitudId = (int)$this->input->get('ele_id', TRUE);
+		if($solicitudId <= 0){
+			$solicitudId = (int)$this->input->post('ele_id', TRUE);
+		}
+		if($solicitudId <= 0){
+			$this->outputJsonResponse(array(
+				'status' => 'unsuccess',
+				'msg' => 'Solicitud invalida',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			));
+		}
+
+		$solicitud = $this->Solicitudmodel->getClientSolicitudById($userId, $solicitudId);
+		if($solicitud === false){
+			$this->outputJsonResponse(array(
+				'status' => 'unsuccess',
+				'msg' => 'La solicitud indicada no existe o no pertenece al cliente autenticado',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			));
+		}
+
+		if(!$this->Solicitudarchivosmodel->canUse()){
+			$this->outputJsonResponse(array(
+				'status' => 'unsuccess',
+				'msg' => 'No se puede cargar la lista porque falta la tabla de archivos de solicitud',
+				'hash' => $this->security->get_csrf_hash(),
+				'token' => $this->security->get_csrf_token_name(),
+			));
+		}
+
+		$files = $this->getSolicitudFilesData($solicitudId);
+		$this->outputJsonResponse(array(
+			'status' => 'success',
+			'msg' => 'Archivos cargados correctamente',
+			'hash' => $this->security->get_csrf_hash(),
+			'token' => $this->security->get_csrf_token_name(),
+			'total' => count($files),
+			'files' => $files,
+		));
+	}
+		$json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+		if($json === false){
+			$json = '{"status":"unsuccess","msg":"Error serializando respuesta JSON"}';
+		}
+		die($json);
+	}
+
+	private function getSolicitudFilesData($solicitudId){
+		$files = array();
+		if((int)$solicitudId <= 0 || !$this->Solicitudarchivosmodel->canUse()){
+			return $files;
+		}
+
+		$this->Solicitudarchivosmodel->ensurePacsColumns();
+		$filesResult = $this->Solicitudarchivosmodel->getArchivosBySolicitud((int)$solicitudId);
+		if($filesResult === false){
+			return $files;
+		}
+
+		foreach($filesResult->result() as $fileRow){
+			$files[] = array(
+				'nombre_original' => isset($fileRow->SAR_DS_NOMBRE_ORIGINAL) ? (string)$fileRow->SAR_DS_NOMBRE_ORIGINAL : '',
+				'extension' => isset($fileRow->SAR_DS_EXTENSION) ? (string)$fileRow->SAR_DS_EXTENSION : '',
+				'tam_bytes' => isset($fileRow->SAR_NM_TAM_BYTES) ? (int)$fileRow->SAR_NM_TAM_BYTES : 0,
+				'fecha' => isset($fileRow->SAR_DT_CREATE) ? $this->formatDate($fileRow->SAR_DT_CREATE) : '-',
+			);
+		}
+
+		return $files;
 	}
 
 	public function confirmarPago(){

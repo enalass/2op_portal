@@ -458,6 +458,9 @@ $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = FALSE;
 $config['csrf_exclude_uris'] = array(
 	'api/v1/pacs/report',
+	'panel/get_solicitud_files',
+	'admin/CA003_solicitudes/get_dicom_files_list',
+	'admin/CA003_solicitudes/get_dicom_file_detail',
 	'panel/pago/notificar',
 	'panel/pago/ok',
 	'panel/pago/ko',

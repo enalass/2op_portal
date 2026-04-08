@@ -328,8 +328,9 @@ $isLockedState = ($estadoClienteActual >= 7);
 
                                             <div class="col-lg-6">
                                                 <h5 class="mb-3">Archivos ya subidos</h5>
-                                                <div id="studyUploadedEmptyMessage" class="text-muted" <?php echo empty($selectedSolicitudFiles) ? '' : 'style="display:none;"'; ?>>Todavia no hay archivos subidos.</div>
-                                                <div class="table-responsive" id="studyUploadedTableWrap" <?php echo empty($selectedSolicitudFiles) ? 'style="display:none;"' : ''; ?>>
+                                                <div id="studyUploadedLoadingMessage" class="text-muted">Cargando archivos...</div>
+                                                <div id="studyUploadedEmptyMessage" class="text-muted" style="display:none;">Todavia no hay archivos subidos.</div>
+                                                <div class="table-responsive" id="studyUploadedTableWrap" style="display:none;">
                                                     <table class="table table-sm table-striped">
                                                         <thead>
                                                             <tr>
@@ -340,18 +341,10 @@ $isLockedState = ($estadoClienteActual >= 7);
                                                             </tr>
                                                         </thead>
                                                         <tbody id="studyUploadedFilesBody">
-                                                            <?php foreach ($selectedSolicitudFiles as $fileItem): ?>
-                                                                <tr>
-                                                                    <td><?php echo html_escape($fileItem['nombre_original']); ?></td>
-                                                                    <td><?php echo html_escape(strtoupper($fileItem['extension'])); ?></td>
-                                                                    <td><?php echo number_format(((int)$fileItem['tam_bytes']) / 1024 / 1024, 2, ',', '.'); ?> MB</td>
-                                                                    <td><?php echo html_escape($fileItem['fecha']); ?></td>
-                                                                </tr>
-                                                            <?php endforeach; ?>
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <div class="d-flex flex-wrap justify-content-between align-items-center mt-3" id="studyUploadedPaginationWrap" <?php echo empty($selectedSolicitudFiles) ? 'style="display:none;"' : ''; ?>>
+                                                <div class="d-flex flex-wrap justify-content-between align-items-center mt-3" id="studyUploadedPaginationWrap" style="display:none;">
                                                     <div id="studyPaginationInfo" class="small text-muted mr-3 mb-2"></div>
                                                     <div class="mb-2">
                                                         <button type="button" class="btn btn-sm btn-light-primary mr-2" id="studyPrevPage">Anterior</button>
@@ -1036,6 +1029,88 @@ $isLockedState = ($estadoClienteActual >= 7);
             initUploadedFilesPagination(true);
         }
 
+        function loadUploadedFiles(){
+            var loading = byId('studyUploadedLoadingMessage');
+            var empty = byId('studyUploadedEmptyMessage');
+            var wrap = byId('studyUploadedTableWrap');
+            var paginationWrap = byId('studyUploadedPaginationWrap');
+            var body = byId('studyUploadedFilesBody');
+            var totalInfo = byId('studyPaginationInfo');
+            var csrf = byId('studyUploadCsrf');
+            if(!loading || !empty || !wrap || !paginationWrap || !body || !totalInfo){
+                return;
+            }
+
+            loading.style.display = 'block';
+            empty.style.display = 'none';
+            wrap.style.display = 'none';
+            paginationWrap.style.display = 'none';
+            body.innerHTML = '';
+
+            fetch('<?php echo site_url('panel/get_solicitud_files'); ?>?ele_id=<?php echo (int)$selectedSolicitud['id']; ?>', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'same-origin'
+            }).then(function(response){
+                return response.json();
+            }).then(function(result){
+                if(result && result.token && result.hash){
+                    refreshCsrf(result);
+                }
+
+                loading.style.display = 'none';
+
+                if(!result || result.status !== 'success'){
+                    empty.textContent = (result && result.msg) ? result.msg : 'No se pudieron cargar los archivos.';
+                    empty.style.display = 'block';
+                    return;
+                }
+
+                renderUploadedFiles(result.files || []);
+            }).catch(function(){
+                loading.style.display = 'none';
+                empty.textContent = 'No se pudieron cargar los archivos.';
+                empty.style.display = 'block';
+            });
+        }
+
+        function renderUploadedFiles(uploadedFiles){
+            var tbody = byId('studyUploadedFilesBody');
+            var empty = byId('studyUploadedEmptyMessage');
+            var wrap = byId('studyUploadedTableWrap');
+            var paginationWrap = byId('studyUploadedPaginationWrap');
+            if(!tbody || !empty || !wrap || !paginationWrap){
+                return;
+            }
+
+            tbody.innerHTML = '';
+
+            if(!uploadedFiles || uploadedFiles.length === 0){
+                wrap.style.display = 'none';
+                paginationWrap.style.display = 'none';
+                empty.textContent = 'Todavia no hay archivos subidos.';
+                empty.style.display = 'block';
+                return;
+            }
+
+            for(var i = 0; i < uploadedFiles.length; i++){
+                var item = uploadedFiles[i] || {};
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + escapeHtml(item.nombre_original || '-') + '</td>' +
+                    '<td>' + escapeHtml((item.extension || '-').toString().toUpperCase()) + '</td>' +
+                    '<td>' + formatBytesToMb(item.tam_bytes || 0) + '</td>' +
+                    '<td>' + escapeHtml(item.fecha || '-') + '</td>';
+                tbody.appendChild(tr);
+            }
+
+            empty.style.display = 'none';
+            wrap.style.display = '';
+            paginationWrap.style.display = 'flex';
+            initUploadedFilesPagination(true);
+        }
+
         function uploadFiles(){
             var fileInput = byId('estudiosFiles');
             var button = byId('buttonSubirEstudios');
@@ -1293,7 +1368,7 @@ $isLockedState = ($estadoClienteActual >= 7);
                 });
             }
 
-            initUploadedFilesPagination();
+            loadUploadedFiles();
         });
     })();
 </script>
