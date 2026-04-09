@@ -142,6 +142,8 @@ class CC001_panelControl extends CI_Controller {
 			'files' => $files,
 		));
 	}
+
+	private function outputJsonResponse($payload){
 		$json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 		if($json === false){
 			$json = '{"status":"unsuccess","msg":"Error serializando respuesta JSON"}';
