@@ -27,3 +27,8 @@ vendor/
 # IDE
 .vscode/
 .idea/
+
+#Copilot
+.copilot-instructions.md
+AGENTS.md
+estuctura_bd_para_copilot.txt
