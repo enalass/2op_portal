@@ -25,7 +25,7 @@
   <meta property="og:title" content="Segunda Opinión Radiológica | Verifica tu diagnóstico">
   <meta property="og:description" content="No pongas en riesgo las decisiones de tu salud y obtén el diagnóstico más completo para afrontar las decisiones futuras con las máximas garantías.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://2op.desarrolloinformatico.com/">
+  <meta property="og:url" content="https://www.segundaopinionradiologica.com/">
   <meta property="og:image" content="/assetsP/images/id.jpg">
 
   <!--    Stylesheets-->
@@ -113,7 +113,7 @@
       <div class="modal-content border-0 rounded-0">
         <div class="modal-header justify-content-center border-0 p-2">
           <figure class="d-inline-flex flex-column align-items-center m-0">
-            <img class="" src="assetsP/images/logo/logo-segunda-opinion-radiologica.png" width="250px" style="padding-top: 40px;">
+            <img class="" src="image/SOR_horizontal.png" width="250px" style="padding-top: 40px;">
           </figure>
           <div class="modalCloser">
             x
