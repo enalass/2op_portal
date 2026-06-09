@@ -15,10 +15,10 @@
   <meta name="keywords" content="segunda opinión radiológica, segunda opinión médica, pruebas de diagnóstico, estudios médicos">
   <!--    Favicons-->
   <!--    =============================================-->
-  <link rel="apple-touch-icon" sizes="180x180" href="assetsP/images/favicons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="assetsP/images/favicons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="assetsP/images/favicons/favicon-16x16.png">
-  <meta name="msapplication-TileImage" content="assetsP/images/favicons/mstile-150x150.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="image/SOR_simbolo_favicon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="image/SOR_simbolo_favicon.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="image/SOR_simbolo_favicon.png">
+  <meta name="msapplication-TileImage" content="image/SOR_simbolo_favicon.png">
   <meta name="theme-color" content="#ffffff"><!--  -->
 
   <!-- Etiquetas Open Graph -->
