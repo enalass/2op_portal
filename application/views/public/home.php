@@ -194,37 +194,37 @@
       </div>
       <div class="row mt-4">
         <div class="col-md-4 pr-md-4 pr-lg-7">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/uno.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Envía tu solicitud</p>
           <p class="mt-3 mb-4">Completa el formulario que aparece en esta misma página con todos tus datos para poder iniciar todo el proceso de alta.</p>
         </div>
         <div class="col-md-4 pr-md-4 pr-lg-7 mt-5 mt-md-0">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/dos.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Atención telefónica</p>
           <p class="mt-3 mb-4">Nuestro equipo se pondrá en contacto contigo para coordinar el envío de todos los estudios, datos adicionales y métodos de pago.</p>
         </div>
         <div class="col-md-4 pr-md-4 pr-lg-7 mt-5 mt-md-0">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/tres.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Envío documentación</p>
           <p class="mt-3 mb-4">Dberás enviarnos todos los estudios en un archivo comprimido desde tu área privada. Una vez recibido nuestro equipo confirmará la recepción.</p>
         </div>
         <div class="col-md-4 pr-md-4 pr-lg-7 mt-5 mt-md-0">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/cuatro.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Estudio de los resultados</p>
           <p class="mt-3 mb-4">Nuestro personal de referencia analizará todas las pruebas y te consultará cualquier duda para poder emitir el diagnóstico más acertado.</p>
         </div>
         <div class="col-md-4 pr-md-4 pr-lg-7 mt-5 mt-md-0">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/cinco.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Envío de informe</p>
           <p class="mt-3 mb-4">Se enviará un informe con todos los resultados detallados de la segunda opinión radiológica y las conclusiones obtenidas.</p>
         </div>
         <div class="col-md-4 pr-md-4 pr-lg-7 mt-5 mt-md-0">
-          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #383838 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+          <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #11273F 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
           <p class="numeroPaso mt-4"><img src = "assetsP/images/iconos/seis.png" width="80px" alt="Pasos para realizar una Segunda Opinión Radiológica"></p>
           <p class="tituloIntermedio mt-4">Idioma adicional</p>
           <p class="mt-3 mb-4">Se podrá solicitar la traducción del informe sin coste adicional a un idioma extra a partir del original en castellano.</p>
@@ -345,22 +345,22 @@
         <div class="col-lg-8">
           <div class="row">
             <div class="col-md-6 pr-md-6 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #fff 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Reconocimiento</p>
               <p class="color-white">Es una herramienta valiosa para la toma de decisiones médicas más informadas, y mejorar la calidad del cuidado de la salud de la mano de profesionales reconocidos.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #fff 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Comodidad</p>
               <p class="color-white">Podrás hacerlo todo de forma telemática, desde casa, con métodos muy optimizados y sin nada de burocracia teniendo los resultados en muy corto plazo.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-4 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #fff 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Experiencia</p>
               <p class="color-white">Nos avalan más de 20 años de experiencia en el sector de pruebas de diagnósticos y realizamos más de 2.000 estudios mensuales de todo tipo de patologías.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:1.2}" style="background: linear-gradient(to right, #fff 0%, #6884c3 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:1.2}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Fiabilidad</p>
               <p class="color-white">Siempre conocerás el médico que ha realizado tu informe y podrás comprobar todo su historial médico, experiencia y pacientes satisfechos.</p>
             </div>
@@ -387,7 +387,7 @@
       </div>
       <div class="row justify-content-center">
         <div class="col-lg-10">
-          <div class="slick-line mb-4" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:&quot;0&quot;},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" data-zanim-trigger="scroll" style="height: 2px; opacity: 0.4; background: linear-gradient(to right, #383838 0%, #6884c3 100%);"></div>
+          <div class="slick-line mb-4" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:&quot;0&quot;},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" data-zanim-trigger="scroll" style="height: 2px; opacity: 0.4; background: linear-gradient(to right, #11273F 0%, #6D8399 100%);"></div>
           <div class=""><img class="d-flex mr-3 mr-md-6" style="width: 75px;" src="assetsP/images/iconos/opiniones.png" alt="Opiniones Segunda Opinión Radiológica">
             <div class="media-body pr-sm-6" style="overflow-x: hidden;">
               <div class="owl-carousel owl-theme owl-nav-outer" data-options="{&quot;items&quot;:1,&quot;margin&quot;:30,&quot;autoplay&quot;:true,&quot;loop&quot;:true,&quot;nav&quot;:true,&quot;dots&quot;:false,&quot;autoplayHoverPause&quot;:true}">
@@ -442,7 +442,7 @@
               </div>
             </div>
           </div>
-          <div class="slick-line mt-4" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:&quot;0&quot;},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.6}" data-zanim-trigger="scroll" style="height: 2px; opacity: 0.4; background: linear-gradient(to right, #383838 0%, #6884c3 100%);"></div>
+          <div class="slick-line mt-4" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:&quot;0&quot;},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.6}" data-zanim-trigger="scroll" style="height: 2px; opacity: 0.4; background: linear-gradient(to right, #11273F 0%, #6D8399 100%);"></div>
         </div>
       </div>
       <!--/.row-->
