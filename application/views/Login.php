@@ -24,7 +24,7 @@
 		<link href="<?php echo  base_url(); ?>assetsM/css/themes/layout/brand/dark.css" rel="stylesheet" type="text/css" />
 		<link href="<?php echo  base_url(); ?>assetsM/css/themes/layout/aside/dark.css" rel="stylesheet" type="text/css" />
 		<!--end::Layout Themes-->
-		<link rel="shortcut icon" href="<?php echo  base_url(); ?>image/apple-touch-icon.png" />
+		<link rel="shortcut icon" href="<?php echo  base_url(); ?>image/SOR_simbolo_favicon.png" />
 	</head>
 	<!--end::Head-->
 	<!--begin::Body-->
@@ -39,7 +39,7 @@
 					<div class="d-flex flex-row-fluid flex-column justify-content-between">
 						<!--begin: Aside header-->
 						<a href="#" class="flex-column-auto mt-5 pb-lg-0 pb-10">
-							<img src="<?php echo  base_url(); ?>image/logo-segunda-opinion-radiologica.png" class="max-h-70px" alt="" style="display: block;margin:auto;"/>
+							<img src="<?php echo  base_url(); ?>image/SOR_horizontal_blanco.png" class="max-h-70px" alt="" style="display: block;margin:auto;"/>
 						</a>
 						<!--end: Aside header-->
 						<!--begin: Aside content-->

@@ -24,7 +24,7 @@
 		<link href="<?php echo base_url(); ?>assetsM/css/themes/layout/brand/light.css" rel="stylesheet" type="text/css" />
 		<link href="<?php echo base_url(); ?>assetsM/css/themes/layout/aside/light.css" rel="stylesheet" type="text/css" />
 		<!--end::Layout Themes-->
-		<link rel="shortcut icon" href="<?php echo base_url(); ?>image/logo-segunda-opinion-radiologica.png" />
+		<link rel="shortcut icon" href="<?php echo base_url(); ?>image/SOR_simbolo_favicon.png" />
 		<!-- <link rel="shortcut icon" href="<?php //echo base_url(); ?>assetsM/media/logos/favicon.ico" /> -->
 	</head>
 	<!--end::Head-->
@@ -35,7 +35,7 @@
 		<div id="kt_header_mobile" class="header-mobile align-items-center header-mobile-fixed">
 			<!--begin::Logo-->
 			<a href="<?php echo base_url(); ?>">
-				<img alt="Logo" src="<?php echo base_url(); ?>image/logo-segunda-opinion-radiologica.png" width="150px" />
+				<img alt="Logo" src="<?php echo base_url(); ?>image/SOR_horizontal.png" width="150px" />
 			</a>
 			<!--end::Logo-->
 			<!--begin::Toolbar-->
@@ -78,7 +78,7 @@
 					<div class="brand flex-column-auto" id="kt_brand">
 						<!--begin::Logo-->
 						<a href="<?php echo base_url(); ?>" class="brand-logo">
-							<img alt="Logo" src="<?php echo base_url(); ?>image/logo-segunda-opinion-radiologica.png" width="150px" />
+							<img alt="Logo" src="<?php echo base_url(); ?>image/SOR_horizontal.png" width="150px" />
 						</a>
 						<!--end::Logo-->
 						<!--begin::Toggle-->

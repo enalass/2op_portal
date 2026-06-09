@@ -98,7 +98,7 @@
         </div>
       </div>
       <div class="contenedorLogo">
-        <a class="navbar-brand" href="https://2op.desarrolloinformatico.com/"><img src="assetsP/images/logo/logo-segunda-opinion-radiologica.png" width="220px" alt="Logo Segunda Opinión Radiológica"></a>
+        <a class="navbar-brand" href="https://www.segundaopinionradiologica.com/"><img src="image/SOR_horizontal.png" width="220px" alt="Logo Segunda Opinión Radiológica"></a>
       </div>
       <div class="contenedorBoton ocultarMovil">
         <ul class="navbar-nav ml-auto">
@@ -136,9 +136,9 @@
             <li class="nav-item">
               <a class="nav-link" href="#motivos" rel="noopener noreferrer">¿Por qué hacerlo?</a>
             </li>
-            <li class="nav-item">
+            <!-- <li class="nav-item">
               <a class="nav-link" href="#opiniones" rel="noopener noreferrer">Opiniones</a>
-            </li>
+            </li> -->
             <li class="nav-item">
               <a class="nav-link" href="#contacto" rel="noopener noreferrer">Contacto</a>
             </li>
@@ -275,7 +275,7 @@
               <h3 class="tituloIntermedio mt-2 mb-2 color-white">Dra. Sandra Mechó Meca</h3>
               <p class="color-white">Radióloga adjunta del Hospital de Barcelona-SCIAS y colaboradora de los Servicios Médicos del Fútbol Club Barcelona.</p>
               <img src="./assetsP/images/iconos/icono_doctor.png" class = "avatarEquipo mt-2 mb-2" width="50px">
-              <h3 class="tituloIntermedio mt-2 mb-2 color-white">Dr. Sergio Igancio Serrano Belmar</h3>
+              <h3 class="tituloIntermedio mt-2 mb-2 color-white">Dr. Sergio Ignacio Serrano Belmar</h3>
               <p class="color-white">Radiólogo de Servicios Médicos Real Madrid y antiguo jefe de sección de Servicio  de  Radiodiagnóstico  Hospital La Moraleja (Madrid).</p>
             </div>
           </div>
@@ -378,7 +378,7 @@
     <!--/.container-->
   </section>
 
-  <section class = "background-white" id="opiniones">
+  <section class = "background-white" id="opiniones" style="display:none;">
     <div class="container">
       <div class="row text-center">
         <div class="col">
