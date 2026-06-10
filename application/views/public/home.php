@@ -345,22 +345,22 @@
         <div class="col-lg-8">
           <div class="row">
             <div class="col-md-6 pr-md-6 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.2}" style="background: linear-gradient(to right, #fff 0%, #11273F 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Reconocimiento</p>
               <p class="color-white">Es una herramienta valiosa para la toma de decisiones médicas más informadas, y mejorar la calidad del cuidado de la salud de la mano de profesionales reconocidos.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.4}" style="background: linear-gradient(to right, #fff 0%, #11273F 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Comodidad</p>
               <p class="color-white">Podrás hacerlo todo de forma telemática, desde casa, con métodos muy optimizados y sin nada de burocracia teniendo los resultados en muy corto plazo.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-4 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:0.8}" style="background: linear-gradient(to right, #fff 0%, #11273F 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Experiencia</p>
               <p class="color-white">Nos avalan más de 20 años de experiencia en el sector de pruebas de diagnósticos y realizamos más de 2.000 estudios mensuales de todo tipo de patologías.</p>
             </div>
             <div class="col-md-6 pr-md-6 mb-lg-0 mb-6">
-              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:1.2}" style="background: linear-gradient(to right, #fff 0%, #6D8399 100%);" data-zanim-trigger="scroll"></div>
+              <div class="slick-line" data-zanim-xs="{&quot;from&quot;:{&quot;width&quot;:0},&quot;to&quot;:{&quot;width&quot;:&quot;100%&quot;},&quot;duration&quot;:1,&quot;delay&quot;:1.2}" style="background: linear-gradient(to right, #fff 0%, #11273F 100%);" data-zanim-trigger="scroll"></div>
               <p class="tituloIntermedio mt-4 mb-3 color-white">Fiabilidad</p>
               <p class="color-white">Siempre conocerás el médico que ha realizado tu informe y podrás comprobar todo su historial médico, experiencia y pacientes satisfechos.</p>
             </div>
