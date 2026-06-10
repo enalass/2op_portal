@@ -313,7 +313,7 @@
                   </div>
                 </div>
               </div>
-              <div class="form-group"><label class="color-black fw-700 mb-0">Email</label><input class="form-control" type="email" name="email" placeholder="nombre@email.com"></div>
+              <div class="form-group"><label class="color-black fw-700 mb-0">Email</label><input class="form-control" type="email" name="email" placeholder="nombre@dominio.com"></div>
               <div class="form-group"><label class="color-black fw-700 mb-0">Cuéntanos qué necesitas</label><textarea class="form-control" rows="5" name="mensaje" placeholder="Escribe en detalle en qué podemos ayudarte"></textarea></div>
               <div class="row justify-content-between">
                 <div class="col-sm">
