@@ -54,7 +54,20 @@
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', isset($_SERVER['CI_ENV']) ? $_SERVER['CI_ENV'] : 'development');
+	// Si CI_ENV no está definida, se decide por el host: solo es 'development'
+	// en entornos locales; en cualquier otro caso (producción) es 'production'.
+	if (isset($_SERVER['CI_ENV']))
+	{
+		$ci_env = $_SERVER['CI_ENV'];
+	}
+	else
+	{
+		$ci_host = isset($_SERVER['HTTP_HOST']) ? strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'])) : '';
+		$ci_is_local = in_array($ci_host, array('localhost', '127.0.0.1', '[::1]'), TRUE)
+			|| preg_match('/\.(local|test|localhost)$/', $ci_host) === 1;
+		$ci_env = $ci_is_local ? 'development' : 'production';
+	}
+	define('ENVIRONMENT', $ci_env);
 
 /*
  *---------------------------------------------------------------

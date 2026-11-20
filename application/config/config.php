@@ -408,6 +408,7 @@ $config['cookie_prefix']	= "";
 $config['cookie_domain']	= "";
 $config['cookie_path']		= "/";
 $config['cookie_secure']	= TRUE;
+$config['cookie_httponly']	= FALSE; // PHP 8.1+: setcookie() no admite NULL en $httponly
 
 /*
 |--------------------------------------------------------------------------
